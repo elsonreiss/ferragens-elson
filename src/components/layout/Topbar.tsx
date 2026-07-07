@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Moon, Sun, Bell, LogOut, Package, User as UserIcon, Truck, Camera } from "lucide-react";
+import { Search, Moon, Sun, Bell, LogOut, Package, User as UserIcon, Truck, Camera, Menu } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -46,7 +46,11 @@ function resizeImageToDataUrl(file: File, maxSize = 256): Promise<string> {
   });
 }
 
-export function Topbar() {
+interface TopbarProps {
+  onMenuClick: () => void;
+}
+
+export function Topbar({ onMenuClick }: TopbarProps) {
   const { theme, toggle } = useTheme();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -145,7 +149,15 @@ export function Topbar() {
   const hasResults = results && (results.produtos.length > 0 || results.clientes.length > 0 || results.fornecedores.length > 0);
 
   return (
-    <header className="app-topbar sticky top-0 z-10 h-16 flex items-center gap-4 border-b border-border bg-surface/80 backdrop-blur px-6">
+    <header className="app-topbar sticky top-0 z-20 h-16 flex items-center gap-2 md:gap-4 border-b border-border bg-surface/80 backdrop-blur px-3 md:px-6">
+      <button
+        onClick={onMenuClick}
+        className="md:hidden w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-text-muted hover:bg-bg hover:text-text transition-colors"
+        title="Abrir menu"
+        aria-label="Abrir menu"
+      >
+        <Menu size={20} />
+      </button>
       <div ref={searchBoxRef} className="relative flex-1 max-w-md">
         <form onSubmit={handleSearch}>
           <div className="relative">
