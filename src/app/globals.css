@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Paleta — derivada da identidade visual da Ferragens do Elson */
+  --color-navy-900: #0f1e28;
+  --color-navy-800: #16303f;
+  --color-navy-700: #1e4459;
+  --color-navy-600: #2a5a73;
+  --color-blue-500: #3d7ea6;
+  --color-orange-600: #d2661f;
+  --color-orange-500: #e8792f;
+  --color-orange-400: #f0955a;
+
+  --color-bg: #f6f4ef;
+  --color-surface: #ffffff;
+  --color-surface-raised: #fffdfa;
+  --color-border: #e3ded2;
+  --color-text: #1a2027;
+  --color-text-muted: #5f6b72;
+
+  --color-success: #2f9e44;
+  --color-success-bg: #e9f7ec;
+  --color-warning: #d2941a;
+  --color-warning-bg: #fbf1de;
+  --color-danger: #d6483f;
+  --color-danger-bg: #fbeae8;
+
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.dark {
+  --color-bg: #0c141b;
+  --color-surface: #121e28;
+  --color-surface-raised: #17242f;
+  --color-border: #223140;
+  --color-text: #e7ecef;
+  --color-text-muted: #8b99a3;
+
+  --color-success-bg: #12291a;
+  --color-warning-bg: #2b2210;
+  --color-danger-bg: #2b1512;
+}
+
+@theme inline {
+  --color-navy-900: var(--color-navy-900);
+  --color-navy-800: var(--color-navy-800);
+  --color-navy-700: var(--color-navy-700);
+  --color-navy-600: var(--color-navy-600);
+  --color-blue-500: var(--color-blue-500);
+  --color-orange-600: var(--color-orange-600);
+  --color-orange-500: var(--color-orange-500);
+  --color-orange-400: var(--color-orange-400);
+
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-border: var(--color-border);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+
+  --color-success: var(--color-success);
+  --color-success-bg: var(--color-success-bg);
+  --color-warning: var(--color-warning);
+  --color-warning-bg: var(--color-warning-bg);
+  --color-danger: var(--color-danger);
+  --color-danger-bg: var(--color-danger-bg);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+::selection {
+  background: var(--color-orange-400);
+  color: white;
+}
+
+/* Cartão-etiqueta: o elemento de assinatura visual do sistema —
+   um recorte de canto que remete às etiquetas de preço de loja física. */
+.tag-card {
+  position: relative;
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+}
+.tag-card::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--color-bg);
+  z-index: 2;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
+
+@media print {
+  .no-print,
+  .app-sidebar,
+  .app-topbar {
+    display: none !important;
+  }
+  .print-area {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  body {
+    background: white !important;
+  }
+}
