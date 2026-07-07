@@ -12,11 +12,11 @@
 
 :root {
   /* Paleta — derivada da identidade visual da Ferragens do Elson */
-  --color-navy-900: #0f1e28;
-  --color-navy-800: #16303f;
-  --color-navy-700: #1e4459;
-  --color-navy-600: #2a5a73;
-  --color-blue-500: #3d7ea6;
+  --color-navy-900: #0a0a0a;
+  --color-navy-800: #171717;
+  --color-navy-700: #262626;
+  --color-navy-600: #404040;
+  --color-blue-500: #737373;
   --color-orange-600: #d2661f;
   --color-orange-500: #e8792f;
   --color-orange-400: #f0955a;
@@ -41,12 +41,12 @@
 }
 
 .dark {
-  --color-bg: #0c141b;
-  --color-surface: #121e28;
-  --color-surface-raised: #17242f;
-  --color-border: #223140;
-  --color-text: #e7ecef;
-  --color-text-muted: #8b99a3;
+  --color-bg: #0a0a0a;
+  --color-surface: #141414;
+  --color-surface-raised: #1c1c1c;
+  --color-border: #2e2e2e;
+  --color-text: #ededed;
+  --color-text-muted: #9a9a9a;
 
   --color-success-bg: #12291a;
   --color-warning-bg: #2b2210;
