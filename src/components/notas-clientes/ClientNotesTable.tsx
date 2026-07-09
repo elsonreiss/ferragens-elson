@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, Trash2, Plus } from "lucide-react";
@@ -9,10 +9,21 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { ClientNote } from "@/domain/entities/ClientNote";
+import { User } from "@/domain/entities/User";
 
 export function ClientNotesTable({ notes: initialNotes }: { notes: ClientNote[] }) {
   const router = useRouter();
   const [notes, setNotes] = useState(initialNotes);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((json) => setUser(json.data))
+      .catch(() => {});
+  }, []);
+
+  const canDelete = user?.role !== "funcionario";
 
   async function handleDelete(id: number, clientName: string) {
     const message = 'Excluir a nota de "' + clientName + '"? Os itens ainda nao pagos voltam para o estoque. Essa acao nao pode ser desfeita.';
@@ -78,13 +89,15 @@ export function ClientNotesTable({ notes: initialNotes }: { notes: ClientNote[] 
                         >
                           <Eye size={16} />
                         </Link>
-                        <button
-                          title="Excluir nota"
-                          onClick={() => handleDelete(n.id, n.clientName)}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {canDelete && (
+                          <button
+                            title="Excluir nota"
+                            onClick={() => handleDelete(n.id, n.clientName)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

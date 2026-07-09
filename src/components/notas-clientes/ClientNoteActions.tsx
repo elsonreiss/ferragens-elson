@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Printer, MessageCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ClientNote } from "@/domain/entities/ClientNote";
+import { User } from "@/domain/entities/User";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 
 function buildWhatsAppText(note: ClientNote): string {
@@ -28,6 +29,16 @@ export function ClientNoteActions({ note, clientWhatsapp }: { note: ClientNote; 
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((json) => setUser(json.data))
+      .catch(() => {});
+  }, []);
+
+  const canDelete = user?.role !== "funcionario";
 
   async function handleDelete() {
     if (
@@ -66,9 +77,11 @@ export function ClientNoteActions({ note, clientWhatsapp }: { note: ClientNote; 
         <Button variant="secondary" onClick={shareWhatsApp}>
           <MessageCircle size={16} /> Enviar por WhatsApp
         </Button>
-        <Button variant="danger" disabled={loading} onClick={handleDelete}>
-          <Trash2 size={16} /> Excluir nota
-        </Button>
+        {canDelete && (
+          <Button variant="danger" disabled={loading} onClick={handleDelete}>
+            <Trash2 size={16} /> Excluir nota
+          </Button>
+        )}
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}
