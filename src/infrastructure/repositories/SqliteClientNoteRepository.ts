@@ -12,6 +12,7 @@ interface NoteRow {
   id: number;
   client_id: number;
   client_name: string;
+  live_client_name?: string;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -61,10 +62,20 @@ function mapPayment(row: PaymentRow): ClientNotePayment {
   };
 }
 
+// Nome do cliente sempre em dia: em vez de confiar só na coluna
+// client_notes.client_name (uma foto do nome no momento em que a nota foi
+// aberta), busca o nome atual em clients — assim, se o cliente for renomeado
+// depois, a nota (e o WhatsApp/impressão) já mostram o nome novo.
+const NOTE_SELECT = `
+  SELECT cn.*, COALESCE(c.name, cn.client_name) AS live_client_name
+  FROM client_notes cn
+  LEFT JOIN clients c ON c.id = cn.client_id
+`;
+
 export class SqliteClientNoteRepository implements ClientNoteRepository {
   async findAll(): Promise<ClientNote[]> {
     await ensureDb();
-    const rows = await query<NoteRow>("SELECT * FROM client_notes ORDER BY updated_at DESC");
+    const rows = await query<NoteRow>(`${NOTE_SELECT} ORDER BY cn.updated_at DESC`);
     const result: ClientNote[] = [];
     for (const row of rows) result.push(await this.mapNote(row));
     return result;
@@ -72,13 +83,13 @@ export class SqliteClientNoteRepository implements ClientNoteRepository {
 
   async findById(id: number): Promise<ClientNote | null> {
     await ensureDb();
-    const row = await queryOne<NoteRow>("SELECT * FROM client_notes WHERE id = $1", [id]);
+    const row = await queryOne<NoteRow>(`${NOTE_SELECT} WHERE cn.id = $1`, [id]);
     return row ? await this.mapNote(row) : null;
   }
 
   async findByClientId(clientId: number): Promise<ClientNote | null> {
     await ensureDb();
-    const row = await queryOne<NoteRow>("SELECT * FROM client_notes WHERE client_id = $1", [clientId]);
+    const row = await queryOne<NoteRow>(`${NOTE_SELECT} WHERE cn.client_id = $1`, [clientId]);
     return row ? await this.mapNote(row) : null;
   }
 
@@ -98,7 +109,7 @@ export class SqliteClientNoteRepository implements ClientNoteRepository {
     return {
       id: row.id,
       clientId: row.client_id,
-      clientName: row.client_name,
+      clientName: row.live_client_name ?? row.client_name,
       notes: row.notes,
       items,
       payments,
