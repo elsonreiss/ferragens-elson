@@ -33,7 +33,10 @@ export interface ClientNote {
 }
 
 export interface NewClientNoteItemInput {
-  productId: number;
+  // Se productId não for informado, é um item avulso: productName é
+  // obrigatório e o item não afeta o estoque (não está cadastrado).
+  productId?: number | null;
+  productName?: string;
   quantity: number;
   unitPrice: number;
 }

@@ -36,7 +36,7 @@ function mapItem(row: SaleItemRow): SaleItem {
 }
 
 export interface ResolvedSaleItem {
-  productId: number;
+  productId: number | null;
   productName: string;
   quantity: number;
   unitPrice: number;

@@ -13,6 +13,9 @@ export interface LineItem {
   unit: string;
   quantity: number;
   unitPrice: number;
+  // Item avulso: não está cadastrado no estoque, nome digitado na hora,
+  // não gera movimentação de estoque.
+  isManual?: boolean;
 }
 
 export function emptyLineItem(): LineItem {
@@ -22,14 +25,18 @@ export function emptyLineItem(): LineItem {
 // Campo de busca de produto por nome, código ou categoria, com lista de
 // sugestões (autocomplete) — substitui o antigo <select> com todos os
 // produtos, que era inviável de navegar com o estoque grande.
+// Quando onManual é informado, mostra a opção de usar o texto digitado como
+// um item avulso (fora do estoque) em vez de escolher um produto cadastrado.
 function ProductPicker({
   products,
   value,
   onSelect,
+  onManual,
 }: {
   products: Product[];
   value: number | "";
   onSelect: (productId: number | "") => void;
+  onManual?: (name: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -106,6 +113,20 @@ function ProductPicker({
               </span>
             </button>
           ))}
+          {onManual && query.trim().length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                onManual(query.trim());
+                setQuery("");
+                setOpen(false);
+              }}
+              className="w-full flex flex-col items-start px-3 py-2 text-left text-sm text-orange-600 hover:bg-bg transition-colors border-t border-border"
+            >
+              <span className="font-medium truncate w-full">+ Usar &quot;{query.trim()}&quot; como item avulso</span>
+              <span className="text-xs text-text-muted">Item fora do estoque, não afeta o inventário</span>
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -118,12 +139,15 @@ export function LineItemsEditor({
   onChange,
   defaultUnitPrice,
   priceLabel = "Preço unitário",
+  allowManualEntry = false,
 }: {
   products: Product[];
   items: LineItem[];
   onChange: (items: LineItem[]) => void;
   defaultUnitPrice: (product: Product) => number;
   priceLabel?: string;
+  // Permite adicionar itens avulsos (texto livre, fora do estoque).
+  allowManualEntry?: boolean;
 }) {
   function updateItem(index: number, patch: Partial<LineItem>) {
     const next = items.map((it, i) => (i === index ? { ...it, ...patch } : it));
@@ -133,7 +157,7 @@ export function LineItemsEditor({
   function selectProduct(index: number, productId: number | "") {
     const product = productId === "" ? undefined : products.find((p) => p.id === productId);
     if (!product) {
-      updateItem(index, { productId: "", productName: "", unit: "un", unitPrice: 0 });
+      updateItem(index, { productId: "", productName: "", unit: "un", unitPrice: 0, isManual: false });
       return;
     }
     updateItem(index, {
@@ -141,7 +165,16 @@ export function LineItemsEditor({
       productName: product.name,
       unit: product.unit,
       unitPrice: defaultUnitPrice(product),
+      isManual: false,
     });
+  }
+
+  function selectManual(index: number, name: string) {
+    updateItem(index, { productId: "", productName: name, unit: "un", unitPrice: 0, isManual: true });
+  }
+
+  function cancelManual(index: number) {
+    updateItem(index, { productId: "", productName: "", unit: "un", unitPrice: 0, isManual: false });
   }
 
   function addItem() {
@@ -167,11 +200,29 @@ export function LineItemsEditor({
           >
             <div className="flex items-start gap-2">
               <div className="flex-1 min-w-0">
-                <ProductPicker
-                  products={products}
-                  value={item.productId}
-                  onSelect={(id) => selectProduct(index, id)}
-                />
+                {item.isManual ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={item.productName}
+                      onChange={(e) => updateItem(index, { productName: e.target.value })}
+                      placeholder="Nome do item avulso"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => cancelManual(index)}
+                      className="text-xs text-text-muted underline shrink-0 whitespace-nowrap"
+                    >
+                      Buscar no estoque
+                    </button>
+                  </div>
+                ) : (
+                  <ProductPicker
+                    products={products}
+                    value={item.productId}
+                    onSelect={(id) => selectProduct(index, id)}
+                    onManual={allowManualEntry ? (name) => selectManual(index, name) : undefined}
+                  />
+                )}
               </div>
               <button
                 type="button"

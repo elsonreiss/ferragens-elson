@@ -12,15 +12,18 @@ import { Product } from "@/domain/entities/Product";
 const PAYMENT_METHODS = ["Dinheiro", "PIX", "Cartão", "Outro"];
 
 // Busca de produto por nome, código ou categoria — mesmo padrão usado em
-// orçamentos/vendas/compras.
+// orçamentos/vendas/compras. onManual permite usar o texto digitado como um
+// item avulso (fora do estoque) quando o produto não está cadastrado.
 function ProductPicker({
   products,
   value,
   onSelect,
+  onManual,
 }: {
   products: Product[];
   value: number | "";
   onSelect: (productId: number | "") => void;
+  onManual?: (name: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -97,6 +100,20 @@ function ProductPicker({
               </span>
             </button>
           ))}
+          {onManual && query.trim().length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                onManual(query.trim());
+                setQuery("");
+                setOpen(false);
+              }}
+              className="w-full flex flex-col items-start px-3 py-2 text-left text-sm text-orange-600 hover:bg-bg transition-colors border-t border-border"
+            >
+              <span className="font-medium truncate w-full">+ Usar &quot;{query.trim()}&quot; como item avulso</span>
+              <span className="text-xs text-text-muted">Item fora do estoque, não afeta o inventário</span>
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -111,6 +128,8 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
   const [unitPrice, setUnitPrice] = useState("0");
   const [itemLoading, setItemLoading] = useState(false);
   const [itemError, setItemError] = useState<string | null>(null);
+  const [manualMode, setManualMode] = useState(false);
+  const [manualName, setManualName] = useState("");
 
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0]);
@@ -120,34 +139,63 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
 
   function selectProduct(id: number | "") {
     setProductId(id);
+    setManualMode(false);
+    setManualName("");
     const product = id === "" ? undefined : products.find((p) => p.id === id);
     setUnitPrice(product ? String(product.salePrice) : "0");
   }
 
+  function useManual(name: string) {
+    setManualMode(true);
+    setManualName(name);
+    setProductId("");
+    setUnitPrice("0");
+  }
+
+  function cancelManual() {
+    setManualMode(false);
+    setManualName("");
+  }
+
   async function addItem() {
     setItemError(null);
-    if (productId === "") {
-      setItemError("Selecione um produto.");
-      return;
-    }
     const qty = Number(quantity);
     const price = Number(unitPrice);
     if (qty <= 0) {
       setItemError("A quantidade deve ser maior que zero.");
       return;
     }
+
+    let body: Record<string, unknown>;
+    if (manualMode) {
+      const name = manualName.trim();
+      if (!name) {
+        setItemError("Informe o nome do item avulso.");
+        return;
+      }
+      body = { productName: name, quantity: qty, unitPrice: price };
+    } else {
+      if (productId === "") {
+        setItemError("Selecione um produto ou use um item avulso.");
+        return;
+      }
+      body = { productId, quantity: qty, unitPrice: price };
+    }
+
     setItemLoading(true);
     try {
       const res = await fetch(`/api/client-notes/${note.id}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId, quantity: qty, unitPrice: price }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Erro ao adicionar item.");
       setProductId("");
       setQuantity("1");
       setUnitPrice("0");
+      setManualMode(false);
+      setManualName("");
       router.refresh();
     } catch (err) {
       setItemError(err instanceof Error ? err.message : "Erro inesperado.");
@@ -156,8 +204,9 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
     }
   }
 
-  async function removeItem(itemId: number, productName: string) {
-    if (!confirm(`Remover "${productName}" desta nota? O item volta para o estoque.`)) return;
+  async function removeItem(itemId: number, productName: string, productId: number | null) {
+    const stockNote = productId ? " O item volta para o estoque." : "";
+    if (!confirm(`Remover "${productName}" desta nota?${stockNote}`)) return;
     const res = await fetch(`/api/client-notes/${note.id}/items/${itemId}`, { method: "DELETE" });
     if (res.ok) {
       router.refresh();
@@ -228,7 +277,7 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
                     <button
                       type="button"
                       title="Remover item"
-                      onClick={() => removeItem(item.id, item.productName)}
+                      onClick={() => removeItem(item.id, item.productName, item.productId)}
                       className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
                     >
                       <Trash2 size={14} />
@@ -244,7 +293,24 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
             <div className="flex flex-col gap-1">
               <span className="text-[11px] text-text-muted uppercase tracking-wide">Produto</span>
-              <ProductPicker products={products} value={productId} onSelect={selectProduct} />
+              {manualMode ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={manualName}
+                    onChange={(e) => setManualName(e.target.value)}
+                    placeholder="Nome do item avulso"
+                  />
+                  <button
+                    type="button"
+                    onClick={cancelManual}
+                    className="text-xs text-text-muted underline shrink-0 whitespace-nowrap"
+                  >
+                    Buscar no estoque
+                  </button>
+                </div>
+              ) : (
+                <ProductPicker products={products} value={productId} onSelect={selectProduct} onManual={useManual} />
+              )}
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[11px] text-text-muted uppercase tracking-wide">Qtd.</span>

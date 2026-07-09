@@ -22,21 +22,45 @@ export class SaleUseCases {
       throw new Error("Adicione ao menos um item à venda.");
     }
 
-    const resolvedItems = [];
+    const resolvedItems: Array<{
+      productId: number | null;
+      productName: string;
+      quantity: number;
+      unitPrice: number;
+      purchasePrice: number;
+      subtotal: number;
+    }> = [];
     for (const item of input.items) {
       if (item.quantity <= 0) throw new Error("A quantidade deve ser maior que zero.");
       if (item.unitPrice < 0) throw new Error("O preço não pode ser negativo.");
-      const product = await this.productRepo.findById(item.productId);
-      if (!product) throw new Error("Produto não encontrado.");
-      if (product.quantity < item.quantity) {
-        throw new Error(`Estoque insuficiente de "${product.name}". Disponível: ${product.quantity} ${product.unit}.`);
+
+      if (item.productId) {
+        const product = await this.productRepo.findById(item.productId);
+        if (!product) throw new Error("Produto não encontrado.");
+        if (product.quantity < item.quantity) {
+          throw new Error(`Estoque insuficiente de "${product.name}". Disponível: ${product.quantity} ${product.unit}.`);
+        }
+        resolvedItems.push({
+          productId: product.id,
+          productName: product.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          purchasePrice: product.purchasePrice,
+          subtotal: item.quantity * item.unitPrice,
+        });
+        continue;
       }
+
+      // Item avulso (não cadastrado no estoque): não gera baixa nem lucro
+      // calculado (não há preço de compra de referência).
+      const productName = item.productName?.trim();
+      if (!productName) throw new Error("Informe o nome do item avulso.");
       resolvedItems.push({
-        productId: product.id,
-        productName: product.name,
+        productId: null,
+        productName,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        purchasePrice: product.purchasePrice,
+        purchasePrice: 0,
         subtotal: item.quantity * item.unitPrice,
       });
     }

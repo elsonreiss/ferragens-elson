@@ -135,7 +135,7 @@ export class SqliteClientNoteRepository implements ClientNoteRepository {
     await query(
       `INSERT INTO client_note_items (note_id, product_id, product_name, quantity, unit_price, subtotal)
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [noteId, item.productId, item.productName, item.quantity, item.unitPrice, item.quantity * item.unitPrice]
+      [noteId, item.productId ?? null, item.productName, item.quantity, item.unitPrice, item.quantity * item.unitPrice]
     );
     await query("UPDATE client_notes SET updated_at = now() WHERE id = $1", [noteId]);
     return (await this.findById(noteId))!;

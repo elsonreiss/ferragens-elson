@@ -43,28 +43,42 @@ export class ClientNoteUseCases {
     const note = await this.repo.findById(noteId);
     if (!note) throw new Error("Nota não encontrada.");
 
-    const product = await this.productRepo.findById(input.productId);
-    if (!product) throw new Error("Produto não encontrado.");
-    if (product.quantity < input.quantity) {
-      throw new Error(`Estoque insuficiente de "${product.name}". Disponível: ${product.quantity} ${product.unit}.`);
+    if (input.productId) {
+      const product = await this.productRepo.findById(input.productId);
+      if (!product) throw new Error("Produto não encontrado.");
+      if (product.quantity < input.quantity) {
+        throw new Error(`Estoque insuficiente de "${product.name}". Disponível: ${product.quantity} ${product.unit}.`);
+      }
+
+      const updated = await this.repo.addItem(noteId, {
+        productId: product.id,
+        productName: product.name,
+        quantity: input.quantity,
+        unitPrice: input.unitPrice,
+      });
+
+      await this.productRepo.adjustQuantity(product.id, -input.quantity);
+      await this.stockMovementRepo.create({
+        productId: product.id,
+        type: "saida",
+        quantity: input.quantity,
+        reason: `Fiado — Nota #${noteId} (${note.clientName})`,
+      });
+
+      return updated;
     }
 
-    const updated = await this.repo.addItem(noteId, {
-      productId: product.id,
-      productName: product.name,
+    // Item avulso (não cadastrado no estoque): entra na nota, mas não baixa
+    // nem movimenta estoque.
+    const productName = input.productName?.trim();
+    if (!productName) throw new Error("Informe o nome do item avulso.");
+
+    return this.repo.addItem(noteId, {
+      productId: null,
+      productName,
       quantity: input.quantity,
       unitPrice: input.unitPrice,
     });
-
-    await this.productRepo.adjustQuantity(product.id, -input.quantity);
-    await this.stockMovementRepo.create({
-      productId: product.id,
-      type: "saida",
-      quantity: input.quantity,
-      reason: `Fiado — Nota #${noteId} (${note.clientName})`,
-    });
-
-    return updated;
   }
 
   async removeItem(noteId: number, itemId: number) {

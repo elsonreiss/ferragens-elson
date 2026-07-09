@@ -50,7 +50,7 @@ export interface PurchaseRepository {
 export interface SaleRepository {
   findAll(): Promise<Sale[]>;
   findById(id: number): Promise<Sale | null>;
-  create(input: NewSaleInput, resolvedItems: Array<{ productId: number; productName: string; quantity: number; unitPrice: number; purchasePrice: number; subtotal: number }>, total: number, profit: number): Promise<Sale>;
+  create(input: NewSaleInput, resolvedItems: Array<{ productId: number | null; productName: string; quantity: number; unitPrice: number; purchasePrice: number; subtotal: number }>, total: number, profit: number): Promise<Sale>;
 }
 
 export interface ExpenseRepository {
