@@ -25,7 +25,7 @@ export function SaleForm({ products, clients }: { products: Product[]; clients: 
     setError(null);
 
     const validItems = items.filter(
-      (it) => it.quantity > 0 && (it.productId !== "" || (it.isManual && it.productName.trim() !== ""))
+      (it) => it.quantity > 0 && (it.productId !== "" || it.productName.trim() !== "")
     );
     if (validItems.length === 0) {
       setError("Adicione ao menos um item válido à venda.");
@@ -86,8 +86,7 @@ export function SaleForm({ products, clients }: { products: Product[]; clients: 
         <h3 className="font-display font-semibold text-sm">Itens da venda</h3>
         <p className="text-xs text-text-muted -mt-2">
           O preço de venda de cada produto é sugerido automaticamente, mas pode ser ajustado. O estoque é atualizado ao confirmar.
-          Não achou o produto? Digite o nome na busca e escolha &quot;usar como item avulso&quot; — esse item entra na venda sem
-          mexer no estoque.
+          Não achou o produto? É só digitar o nome — o item entra na venda como avulso, sem mexer no estoque.
         </p>
         <LineItemsEditor
           products={products}

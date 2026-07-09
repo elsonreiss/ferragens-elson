@@ -11,38 +11,37 @@ import { Product } from "@/domain/entities/Product";
 
 const PAYMENT_METHODS = ["Dinheiro", "PIX", "Cartão", "Outro"];
 
-// Busca de produto por nome, código ou categoria — mesmo padrão usado em
-// orçamentos/vendas/compras. onManual permite usar o texto digitado como um
-// item avulso (fora do estoque) quando o produto não está cadastrado.
+// Busca de produto por nome, código ou categoria. O texto digitado fica
+// sempre no campo (nunca some) — clicar numa sugestão vincula ao produto do
+// estoque; se não clicar em nada, o texto digitado é usado como item avulso
+// (fora do estoque), sem precisar de nenhum passo extra.
 function ProductPicker({
   products,
-  value,
-  onSelect,
-  onManual,
+  productId,
+  productName,
+  onSelectProduct,
+  onNameChange,
 }: {
   products: Product[];
-  value: number | "";
-  onSelect: (productId: number | "") => void;
-  onManual?: (name: string) => void;
+  productId: number | "";
+  productName: string;
+  onSelectProduct: (product: Product) => void;
+  onNameChange: (name: string) => void;
 }) {
-  const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-
-  const selected = value === "" ? null : products.find((p) => p.id === value) ?? null;
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setOpen(false);
-        setQuery("");
       }
     }
     window.addEventListener("mousedown", onClickOutside);
     return () => window.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const q = query.trim().toLowerCase();
+  const q = productName.trim().toLowerCase();
   const filtered = (
     q.length === 0
       ? products
@@ -60,16 +59,13 @@ function ProductPicker({
         <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
         <input
           type="text"
-          value={open ? query : selected ? `${selected.code} — ${selected.name}` : ""}
+          value={productName}
           onChange={(e) => {
-            setQuery(e.target.value);
-            if (!open) setOpen(true);
-          }}
-          onFocus={() => {
+            onNameChange(e.target.value);
             setOpen(true);
-            setQuery("");
           }}
-          placeholder="Buscar produto por nome, código ou categoria..."
+          onFocus={() => setOpen(true)}
+          placeholder="Buscar produto ou digitar item avulso..."
           className="w-full rounded-lg border border-border bg-surface pl-8 pr-7 py-2 text-sm text-text placeholder:text-text-muted/70 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 transition-colors"
         />
         <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
@@ -78,15 +74,18 @@ function ProductPicker({
       {open && (
         <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-surface border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto scrollbar-thin">
           {filtered.length === 0 && (
-            <p className="px-3 py-3 text-sm text-text-muted text-center">Nenhum produto encontrado.</p>
+            <p className="px-3 py-3 text-sm text-text-muted text-center">
+              {productName.trim()
+                ? `Nenhum produto encontrado no estoque. "${productName.trim()}" será usado como item avulso.`
+                : "Nenhum produto encontrado."}
+            </p>
           )}
           {filtered.map((p) => (
             <button
               type="button"
               key={p.id}
               onClick={() => {
-                onSelect(p.id);
-                setQuery("");
+                onSelectProduct(p);
                 setOpen(false);
               }}
               className="w-full flex flex-col items-start px-3 py-2 text-left text-sm hover:bg-bg transition-colors"
@@ -100,21 +99,11 @@ function ProductPicker({
               </span>
             </button>
           ))}
-          {onManual && query.trim().length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                onManual(query.trim());
-                setQuery("");
-                setOpen(false);
-              }}
-              className="w-full flex flex-col items-start px-3 py-2 text-left text-sm text-orange-600 hover:bg-bg transition-colors border-t border-border"
-            >
-              <span className="font-medium truncate w-full">+ Usar &quot;{query.trim()}&quot; como item avulso</span>
-              <span className="text-xs text-text-muted">Item fora do estoque, não afeta o inventário</span>
-            </button>
-          )}
         </div>
+      )}
+
+      {!open && productId === "" && productName.trim() !== "" && (
+        <p className="text-[11px] text-orange-600 mt-1">Item avulso (fora do estoque)</p>
       )}
     </div>
   );
@@ -124,12 +113,11 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
   const router = useRouter();
 
   const [productId, setProductId] = useState<number | "">("");
+  const [productName, setProductName] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unitPrice, setUnitPrice] = useState("0");
   const [itemLoading, setItemLoading] = useState(false);
   const [itemError, setItemError] = useState<string | null>(null);
-  const [manualMode, setManualMode] = useState(false);
-  const [manualName, setManualName] = useState("");
 
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0]);
@@ -137,24 +125,18 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  function selectProduct(id: number | "") {
-    setProductId(id);
-    setManualMode(false);
-    setManualName("");
-    const product = id === "" ? undefined : products.find((p) => p.id === id);
-    setUnitPrice(product ? String(product.salePrice) : "0");
+  function selectProduct(product: Product) {
+    setProductId(product.id);
+    setProductName(product.name);
+    setUnitPrice(String(product.salePrice));
   }
 
-  function useManual(name: string) {
-    setManualMode(true);
-    setManualName(name);
+  function updateProductName(name: string) {
+    // Digitar sempre desvincula de um produto já selecionado — o texto
+    // digitado passa a valer como item avulso até que uma sugestão seja
+    // clicada.
     setProductId("");
-    setUnitPrice("0");
-  }
-
-  function cancelManual() {
-    setManualMode(false);
-    setManualName("");
+    setProductName(name);
   }
 
   async function addItem() {
@@ -167,19 +149,15 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
     }
 
     let body: Record<string, unknown>;
-    if (manualMode) {
-      const name = manualName.trim();
+    if (productId !== "") {
+      body = { productId, quantity: qty, unitPrice: price };
+    } else {
+      const name = productName.trim();
       if (!name) {
-        setItemError("Informe o nome do item avulso.");
+        setItemError("Selecione um produto ou digite o nome do item.");
         return;
       }
       body = { productName: name, quantity: qty, unitPrice: price };
-    } else {
-      if (productId === "") {
-        setItemError("Selecione um produto ou use um item avulso.");
-        return;
-      }
-      body = { productId, quantity: qty, unitPrice: price };
     }
 
     setItemLoading(true);
@@ -192,10 +170,9 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Erro ao adicionar item.");
       setProductId("");
+      setProductName("");
       setQuantity("1");
       setUnitPrice("0");
-      setManualMode(false);
-      setManualName("");
       router.refresh();
     } catch (err) {
       setItemError(err instanceof Error ? err.message : "Erro inesperado.");
@@ -204,9 +181,9 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
     }
   }
 
-  async function removeItem(itemId: number, productName: string, productId: number | null) {
-    const stockNote = productId ? " O item volta para o estoque." : "";
-    if (!confirm(`Remover "${productName}" desta nota?${stockNote}`)) return;
+  async function removeItem(itemId: number, name: string, itemProductId: number | null) {
+    const stockNote = itemProductId ? " O item volta para o estoque." : "";
+    if (!confirm(`Remover "${name}" desta nota?${stockNote}`)) return;
     const res = await fetch(`/api/client-notes/${note.id}/items/${itemId}`, { method: "DELETE" });
     if (res.ok) {
       router.refresh();
@@ -293,24 +270,13 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
             <div className="flex flex-col gap-1">
               <span className="text-[11px] text-text-muted uppercase tracking-wide">Produto</span>
-              {manualMode ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={manualName}
-                    onChange={(e) => setManualName(e.target.value)}
-                    placeholder="Nome do item avulso"
-                  />
-                  <button
-                    type="button"
-                    onClick={cancelManual}
-                    className="text-xs text-text-muted underline shrink-0 whitespace-nowrap"
-                  >
-                    Buscar no estoque
-                  </button>
-                </div>
-              ) : (
-                <ProductPicker products={products} value={productId} onSelect={selectProduct} onManual={useManual} />
-              )}
+              <ProductPicker
+                products={products}
+                productId={productId}
+                productName={productName}
+                onSelectProduct={selectProduct}
+                onNameChange={updateProductName}
+              />
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[11px] text-text-muted uppercase tracking-wide">Qtd.</span>
