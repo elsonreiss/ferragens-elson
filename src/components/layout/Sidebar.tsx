@@ -17,6 +17,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   X,
+  NotebookPen,
 } from "lucide-react";
 import { cn } from "@/lib/format";
 import { User } from "@/domain/entities/User";
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, active: true },
   { href: "/estoque", label: "Estoque", icon: Boxes, active: true },
   { href: "/clientes", label: "Clientes", icon: Users, active: true },
+  { href: "/notas-clientes", label: "Notas de Clientes", icon: NotebookPen, active: true },
   { href: "/fornecedores", label: "Fornecedores", icon: Truck, active: true },
   { href: "/vendas", label: "Vendas", icon: ShoppingCart, active: true },
   { href: "/compras", label: "Compras", icon: ReceiptText, active: true },

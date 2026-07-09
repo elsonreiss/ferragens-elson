@@ -7,6 +7,7 @@ import { Expense, NewExpenseInput, FinanceSummary } from "../entities/Expense";
 import { Budget, NewBudgetInput, BudgetStatus } from "../entities/Budget";
 import { MonthlyFinance, SlowMovingProduct, StockValuationRow } from "../entities/Report";
 import { User, UserWithHash, NewUserInput, Session } from "../entities/User";
+import { ClientNote, NewClientNoteItemInput, NewClientNotePaymentInput } from "../entities/ClientNote";
 
 export interface CategoryRepository {
   findAll(): Promise<Category[]>;
@@ -90,4 +91,15 @@ export interface SessionRepository {
   create(userId: number): Promise<Session>;
   findByToken(token: string): Promise<Session | null>;
   delete(token: string): Promise<void>;
+}
+
+export interface ClientNoteRepository {
+  findAll(): Promise<ClientNote[]>;
+  findById(id: number): Promise<ClientNote | null>;
+  findByClientId(clientId: number): Promise<ClientNote | null>;
+  create(clientId: number, clientName: string): Promise<ClientNote>;
+  addItem(noteId: number, item: NewClientNoteItemInput & { productName: string }): Promise<ClientNote>;
+  removeItem(noteId: number, itemId: number): Promise<{ note: ClientNote; removed: { productId: number | null; quantity: number } }>;
+  addPayment(noteId: number, payment: NewClientNotePaymentInput): Promise<ClientNote>;
+  delete(id: number): Promise<void>;
 }

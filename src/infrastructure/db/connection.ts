@@ -215,6 +215,40 @@ async function runMigrations(client: PoolClient) {
       subtotal DOUBLE PRECISION NOT NULL DEFAULT 0
     );
 
+    CREATE TABLE IF NOT EXISTS client_notes (
+      id SERIAL PRIMARY KEY,
+      client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+      client_name TEXT NOT NULL,
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_client_notes_client ON client_notes(client_id);
+
+    CREATE TABLE IF NOT EXISTS client_note_items (
+      id SERIAL PRIMARY KEY,
+      note_id INTEGER NOT NULL REFERENCES client_notes(id) ON DELETE CASCADE,
+      product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+      product_name TEXT NOT NULL,
+      quantity DOUBLE PRECISION NOT NULL DEFAULT 1,
+      unit_price DOUBLE PRECISION NOT NULL DEFAULT 0,
+      subtotal DOUBLE PRECISION NOT NULL DEFAULT 0,
+      added_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS client_note_payments (
+      id SERIAL PRIMARY KEY,
+      note_id INTEGER NOT NULL REFERENCES client_notes(id) ON DELETE CASCADE,
+      amount DOUBLE PRECISION NOT NULL DEFAULT 0,
+      method TEXT,
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_client_note_items_note ON client_note_items(note_id);
+    CREATE INDEX IF NOT EXISTS idx_client_note_payments_note ON client_note_payments(note_id);
+
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,

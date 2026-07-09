@@ -14,6 +14,7 @@ import { SqliteBudgetRepository } from "@/infrastructure/repositories/SqliteBudg
 import { SqliteReportRepository } from "@/infrastructure/repositories/SqliteReportRepository";
 import { SqliteUserRepository } from "@/infrastructure/repositories/SqliteUserRepository";
 import { SqliteSessionRepository } from "@/infrastructure/repositories/SqliteSessionRepository";
+import { SqliteClientNoteRepository } from "@/infrastructure/repositories/SqliteClientNoteRepository";
 
 import { ProductUseCases } from "@/application/use-cases/product/ProductUseCases";
 import { StockMovementUseCases } from "@/application/use-cases/product/StockMovementUseCases";
@@ -27,6 +28,7 @@ import { BudgetUseCases } from "@/application/use-cases/budget/BudgetUseCases";
 import { ReportUseCases } from "@/application/use-cases/report/ReportUseCases";
 import { AuthUseCases } from "@/application/use-cases/auth/AuthUseCases";
 import { UserUseCases } from "@/application/use-cases/user/UserUseCases";
+import { ClientNoteUseCases } from "@/application/use-cases/clientNote/ClientNoteUseCases";
 
 // Camada de composição: troque as implementações "Sqlite*" por outras (ex: Postgres)
 // aqui, sem precisar alterar nenhuma página ou use-case.
@@ -45,6 +47,7 @@ const budgetRepository = new SqliteBudgetRepository();
 const reportRepository = new SqliteReportRepository();
 const userRepository = new SqliteUserRepository();
 const sessionRepository = new SqliteSessionRepository();
+const clientNoteRepository = new SqliteClientNoteRepository();
 
 const saleUseCases = new SaleUseCases(saleRepository, productRepository, stockMovementRepository);
 
@@ -63,6 +66,7 @@ export const container = {
   reportRepository,
   userRepository,
   sessionRepository,
+  clientNoteRepository,
   productUseCases: new ProductUseCases(productRepository),
   stockMovementUseCases: new StockMovementUseCases(productRepository, stockMovementRepository),
   dashboardUseCases: new DashboardUseCases(dashboardRepository),
@@ -75,4 +79,5 @@ export const container = {
   reportUseCases: new ReportUseCases(reportRepository, saleRepository, productRepository),
   authUseCases: new AuthUseCases(userRepository, sessionRepository),
   userUseCases: new UserUseCases(userRepository),
+  clientNoteUseCases: new ClientNoteUseCases(clientNoteRepository, clientRepository, productRepository, stockMovementRepository),
 };

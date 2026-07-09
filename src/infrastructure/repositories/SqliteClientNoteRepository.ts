@@ -1,0 +1,164 @@
+import { ensureDb, query, queryOne } from "../db/connection";
+import {
+  ClientNote,
+  ClientNoteItem,
+  ClientNotePayment,
+  NewClientNoteItemInput,
+  NewClientNotePaymentInput,
+} from "@/domain/entities/ClientNote";
+import { ClientNoteRepository } from "@/domain/repositories";
+
+interface NoteRow {
+  id: number;
+  client_id: number;
+  client_name: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ItemRow {
+  id: number;
+  note_id: number;
+  product_id: number | null;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+  added_at: string;
+}
+
+interface PaymentRow {
+  id: number;
+  note_id: number;
+  amount: number;
+  method: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+function mapItem(row: ItemRow): ClientNoteItem {
+  return {
+    id: row.id,
+    noteId: row.note_id,
+    productId: row.product_id,
+    productName: row.product_name,
+    quantity: Number(row.quantity),
+    unitPrice: Number(row.unit_price),
+    subtotal: Number(row.subtotal),
+    addedAt: row.added_at,
+  };
+}
+
+function mapPayment(row: PaymentRow): ClientNotePayment {
+  return {
+    id: row.id,
+    noteId: row.note_id,
+    amount: Number(row.amount),
+    method: row.method,
+    notes: row.notes,
+    createdAt: row.created_at,
+  };
+}
+
+export class SqliteClientNoteRepository implements ClientNoteRepository {
+  async findAll(): Promise<ClientNote[]> {
+    await ensureDb();
+    const rows = await query<NoteRow>("SELECT * FROM client_notes ORDER BY updated_at DESC");
+    const result: ClientNote[] = [];
+    for (const row of rows) result.push(await this.mapNote(row));
+    return result;
+  }
+
+  async findById(id: number): Promise<ClientNote | null> {
+    await ensureDb();
+    const row = await queryOne<NoteRow>("SELECT * FROM client_notes WHERE id = $1", [id]);
+    return row ? await this.mapNote(row) : null;
+  }
+
+  async findByClientId(clientId: number): Promise<ClientNote | null> {
+    await ensureDb();
+    const row = await queryOne<NoteRow>("SELECT * FROM client_notes WHERE client_id = $1", [clientId]);
+    return row ? await this.mapNote(row) : null;
+  }
+
+  private async mapNote(row: NoteRow): Promise<ClientNote> {
+    const itemRows = await query<ItemRow>(
+      "SELECT * FROM client_note_items WHERE note_id = $1 ORDER BY added_at ASC, id ASC",
+      [row.id]
+    );
+    const paymentRows = await query<PaymentRow>(
+      "SELECT * FROM client_note_payments WHERE note_id = $1 ORDER BY created_at ASC, id ASC",
+      [row.id]
+    );
+    const items = itemRows.map(mapItem);
+    const payments = paymentRows.map(mapPayment);
+    const total = items.reduce((sum, it) => sum + it.subtotal, 0);
+    const paidTotal = payments.reduce((sum, p) => sum + p.amount, 0);
+    return {
+      id: row.id,
+      clientId: row.client_id,
+      clientName: row.client_name,
+      notes: row.notes,
+      items,
+      payments,
+      total,
+      paidTotal,
+      balance: Math.max(0, total - paidTotal),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  async create(clientId: number, clientName: string): Promise<ClientNote> {
+    await ensureDb();
+    const inserted = await queryOne<{ id: number }>(
+      `INSERT INTO client_notes (client_id, client_name) VALUES ($1, $2) RETURNING id`,
+      [clientId, clientName]
+    );
+    return (await this.findById(inserted!.id))!;
+  }
+
+  async addItem(noteId: number, item: NewClientNoteItemInput & { productName: string }): Promise<ClientNote> {
+    await ensureDb();
+    await query(
+      `INSERT INTO client_note_items (note_id, product_id, product_name, quantity, unit_price, subtotal)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [noteId, item.productId, item.productName, item.quantity, item.unitPrice, item.quantity * item.unitPrice]
+    );
+    await query("UPDATE client_notes SET updated_at = now() WHERE id = $1", [noteId]);
+    return (await this.findById(noteId))!;
+  }
+
+  async removeItem(
+    noteId: number,
+    itemId: number
+  ): Promise<{ note: ClientNote; removed: { productId: number | null; quantity: number } }> {
+    await ensureDb();
+    const itemRow = await queryOne<ItemRow>(
+      "SELECT * FROM client_note_items WHERE id = $1 AND note_id = $2",
+      [itemId, noteId]
+    );
+    if (!itemRow) throw new Error("Item não encontrado nesta nota.");
+    await query("DELETE FROM client_note_items WHERE id = $1", [itemId]);
+    await query("UPDATE client_notes SET updated_at = now() WHERE id = $1", [noteId]);
+    const note = (await this.findById(noteId))!;
+    return { note, removed: { productId: itemRow.product_id, quantity: Number(itemRow.quantity) } };
+  }
+
+  async addPayment(noteId: number, payment: NewClientNotePaymentInput): Promise<ClientNote> {
+    await ensureDb();
+    await query(
+      `INSERT INTO client_note_payments (note_id, amount, method, notes) VALUES ($1, $2, $3, $4)`,
+      [noteId, payment.amount, payment.method ?? null, payment.notes ?? null]
+    );
+    await query("UPDATE client_notes SET updated_at = now() WHERE id = $1", [noteId]);
+    return (await this.findById(noteId))!;
+  }
+
+  async delete(id: number): Promise<void> {
+    await ensureDb();
+    // client_note_items e client_note_payments têm ON DELETE CASCADE em note_id.
+    await query("DELETE FROM client_notes WHERE id = $1", [id]);
+  }
+}
