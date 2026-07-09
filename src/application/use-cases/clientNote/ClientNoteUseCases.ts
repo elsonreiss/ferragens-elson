@@ -62,7 +62,7 @@ export class ClientNoteUseCases {
         productId: product.id,
         type: "saida",
         quantity: input.quantity,
-        reason: `Fiado — Nota #${noteId} (${note.clientName})`,
+        reason: `Fiado — ${note.clientName}`,
       });
 
       return updated;
@@ -93,7 +93,7 @@ export class ClientNoteUseCases {
         productId: removed.productId,
         type: "entrada",
         quantity: removed.quantity,
-        reason: `Remoção de item da nota fiado #${noteId} (${note.clientName})`,
+        reason: `Remoção de item da nota fiado (${note.clientName})`,
       });
     }
 
@@ -123,7 +123,7 @@ export class ClientNoteUseCases {
         productId: item.productId,
         type: "entrada",
         quantity: item.quantity,
-        reason: `Exclusão da nota fiado #${id} (${note.clientName})`,
+        reason: `Exclusão da nota fiado (${note.clientName})`,
       });
     }
 

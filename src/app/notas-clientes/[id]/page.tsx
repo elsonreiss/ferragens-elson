@@ -43,7 +43,7 @@ export default async function NotaClienteDetalhePage({ params }: { params: Promi
             </div>
           </div>
           <div className="text-right">
-            <p className="font-display font-semibold text-lg">Nota fiado #{note.id}</p>
+            <p className="font-display font-semibold text-lg">Nota do cliente</p>
             <p className="text-xs text-text-muted">Atualizada em {formatDateTime(note.updatedAt)}</p>
           </div>
         </div>
