@@ -7,6 +7,9 @@ export interface ClientNoteItem {
   unitPrice: number;
   subtotal: number;
   addedAt: string;
+  // Marcado quando o cliente já pagou especificamente este item (permite
+  // pagar só parte da nota, item por item).
+  paidAt: string | null;
 }
 
 export interface ClientNotePayment {
@@ -43,6 +46,12 @@ export interface NewClientNoteItemInput {
 
 export interface NewClientNotePaymentInput {
   amount: number;
+  method?: string;
+  notes?: string;
+}
+
+export interface MarkItemsPaidInput {
+  itemIds: number[];
   method?: string;
   notes?: string;
 }

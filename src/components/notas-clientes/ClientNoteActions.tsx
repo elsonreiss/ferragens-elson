@@ -14,7 +14,10 @@ function buildWhatsAppText(note: ClientNote): string {
     "",
     "Itens:",
     ...note.items.map(
-      (it) => `• ${formatDateTime(it.addedAt)} — ${it.quantity}x ${it.productName} — ${formatCurrency(it.subtotal)}`
+      (it) =>
+        `• ${formatDateTime(it.addedAt)} — ${it.quantity}x ${it.productName} — ${formatCurrency(it.subtotal)}${
+          it.paidAt ? " (pago)" : ""
+        }`
     ),
     "",
     `Total em compras: ${formatCurrency(note.total)}`,

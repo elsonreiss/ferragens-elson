@@ -5,6 +5,7 @@ import {
   ClientNotePayment,
   NewClientNoteItemInput,
   NewClientNotePaymentInput,
+  MarkItemsPaidInput,
 } from "@/domain/entities/ClientNote";
 import { ClientNoteRepository } from "@/domain/repositories";
 
@@ -27,6 +28,7 @@ interface ItemRow {
   unit_price: number;
   subtotal: number;
   added_at: string;
+  paid_at: string | null;
 }
 
 interface PaymentRow {
@@ -48,6 +50,7 @@ function mapItem(row: ItemRow): ClientNoteItem {
     unitPrice: Number(row.unit_price),
     subtotal: Number(row.subtotal),
     addedAt: row.added_at,
+    paidAt: row.paid_at,
   };
 }
 
@@ -151,6 +154,7 @@ export class SqliteClientNoteRepository implements ClientNoteRepository {
       [itemId, noteId]
     );
     if (!itemRow) throw new Error("Item não encontrado nesta nota.");
+    if (itemRow.paid_at) throw new Error("Este item já foi pago e não pode ser removido.");
     await query("DELETE FROM client_note_items WHERE id = $1", [itemId]);
     await query("UPDATE client_notes SET updated_at = now() WHERE id = $1", [noteId]);
     const note = (await this.findById(noteId))!;
@@ -164,6 +168,32 @@ export class SqliteClientNoteRepository implements ClientNoteRepository {
       [noteId, payment.amount, payment.method ?? null, payment.notes ?? null]
     );
     await query("UPDATE client_notes SET updated_at = now() WHERE id = $1", [noteId]);
+    return (await this.findById(noteId))!;
+  }
+
+  async markItemsPaid(noteId: number, input: MarkItemsPaidInput): Promise<ClientNote> {
+    await ensureDb();
+
+    // Só considera itens desta nota que ainda não foram marcados como pagos
+    // — evita contar o mesmo item duas vezes se o usuário clicar de novo.
+    const items = await query<ItemRow>(
+      `SELECT * FROM client_note_items WHERE note_id = $1 AND id = ANY($2) AND paid_at IS NULL`,
+      [noteId, input.itemIds]
+    );
+    if (items.length === 0) {
+      throw new Error("Selecione ao menos um item ainda não pago para marcar como pago.");
+    }
+
+    const amount = items.reduce((sum, it) => sum + Number(it.subtotal), 0);
+    const itemIds = items.map((it) => it.id);
+
+    await query(
+      `INSERT INTO client_note_payments (note_id, amount, method, notes) VALUES ($1, $2, $3, $4)`,
+      [noteId, amount, input.method ?? null, input.notes ?? null]
+    );
+    await query(`UPDATE client_note_items SET paid_at = now() WHERE id = ANY($1)`, [itemIds]);
+    await query("UPDATE client_notes SET updated_at = now() WHERE id = $1", [noteId]);
+
     return (await this.findById(noteId))!;
   }
 

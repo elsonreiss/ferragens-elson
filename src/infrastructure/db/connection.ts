@@ -234,8 +234,11 @@ async function runMigrations(client: PoolClient) {
       quantity DOUBLE PRECISION NOT NULL DEFAULT 1,
       unit_price DOUBLE PRECISION NOT NULL DEFAULT 0,
       subtotal DOUBLE PRECISION NOT NULL DEFAULT 0,
-      added_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      paid_at TIMESTAMPTZ
     );
+
+    ALTER TABLE client_note_items ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
 
     CREATE TABLE IF NOT EXISTS client_note_payments (
       id SERIAL PRIMARY KEY,

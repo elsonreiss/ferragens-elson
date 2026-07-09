@@ -1,4 +1,4 @@
-import { NewClientNoteItemInput, NewClientNotePaymentInput } from "@/domain/entities/ClientNote";
+import { NewClientNoteItemInput, NewClientNotePaymentInput, MarkItemsPaidInput } from "@/domain/entities/ClientNote";
 import { ClientNoteRepository, ClientRepository, StockMovementRepository } from "@/domain/repositories";
 import { ProductRepository } from "@/domain/repositories/ProductRepository";
 
@@ -110,6 +110,20 @@ export class ClientNoteUseCases {
     }
 
     return this.repo.addPayment(noteId, input);
+  }
+
+  // Marca itens específicos da nota como pagos (útil quando o cliente paga
+  // só parte da nota) — cria um pagamento no valor exato da soma desses
+  // itens e os marca individualmente.
+  async markItemsPaid(noteId: number, input: MarkItemsPaidInput) {
+    if (!input.itemIds || input.itemIds.length === 0) {
+      throw new Error("Selecione ao menos um item para marcar como pago.");
+    }
+
+    const note = await this.repo.findById(noteId);
+    if (!note) throw new Error("Nota não encontrada.");
+
+    return this.repo.markItemsPaid(noteId, input);
   }
 
   async delete(id: number) {

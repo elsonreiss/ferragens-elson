@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Search, ChevronDown, HandCoins } from "lucide-react";
+import { Plus, Trash2, Search, ChevronDown, HandCoins, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Field } from "@/components/ui/Form";
+import { Badge } from "@/components/ui/Badge";
 import { formatCurrency, formatDateTime, cn } from "@/lib/format";
 import { ClientNote } from "@/domain/entities/ClientNote";
 import { Product } from "@/domain/entities/Product";
@@ -125,6 +126,11 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
+  const [markPaidMethod, setMarkPaidMethod] = useState(PAYMENT_METHODS[0]);
+  const [markPaidLoading, setMarkPaidLoading] = useState(false);
+  const [markPaidError, setMarkPaidError] = useState<string | null>(null);
+
   function selectProduct(product: Product) {
     setProductId(product.id);
     setProductName(product.name);
@@ -225,6 +231,43 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
     }
   }
 
+  function toggleSelectItem(itemId: number) {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  }
+
+  const unpaidItems = note.items.filter((it) => !it.paidAt);
+  const selectedItems = unpaidItems.filter((it) => selectedItemIds.has(it.id));
+  const selectedTotal = selectedItems.reduce((sum, it) => sum + it.subtotal, 0);
+
+  async function markSelectedPaid() {
+    setMarkPaidError(null);
+    if (selectedItems.length === 0) {
+      setMarkPaidError("Selecione ao menos um item.");
+      return;
+    }
+    setMarkPaidLoading(true);
+    try {
+      const res = await fetch(`/api/client-notes/${note.id}/items/pay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemIds: selectedItems.map((it) => it.id), method: markPaidMethod }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Erro ao marcar itens como pagos.");
+      setSelectedItemIds(new Set());
+      router.refresh();
+    } catch (err) {
+      setMarkPaidError(err instanceof Error ? err.message : "Erro inesperado.");
+    } finally {
+      setMarkPaidLoading(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -233,6 +276,7 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-text-muted uppercase tracking-wide border-b border-border">
+                <th className="py-2 no-print w-8"></th>
                 <th className="py-2">Data / hora</th>
                 <th className="py-2">Produto</th>
                 <th className="py-2 text-right">Qtd.</th>
@@ -244,33 +288,82 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
             <tbody>
               {note.items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-text-muted">
+                  <td colSpan={7} className="py-6 text-center text-text-muted">
                     Nenhum item registrado ainda.
                   </td>
                 </tr>
               )}
-              {note.items.map((item) => (
-                <tr key={item.id} className="border-b border-border/60">
-                  <td className="py-2 text-text-muted whitespace-nowrap">{formatDateTime(item.addedAt)}</td>
-                  <td className="py-2">{item.productName}</td>
-                  <td className="py-2 text-right font-mono">{item.quantity}</td>
-                  <td className="py-2 text-right font-mono">{formatCurrency(item.unitPrice)}</td>
-                  <td className="py-2 text-right font-mono">{formatCurrency(item.subtotal)}</td>
-                  <td className="py-2 text-right no-print">
-                    <button
-                      type="button"
-                      title="Remover item"
-                      onClick={() => removeItem(item.id, item.productName, item.productId)}
-                      className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {note.items.map((item) => {
+                const paid = Boolean(item.paidAt);
+                return (
+                  <tr key={item.id} className={cn("border-b border-border/60", paid && "opacity-60")}>
+                    <td className="py-2 no-print">
+                      {!paid && (
+                        <input
+                          type="checkbox"
+                          checked={selectedItemIds.has(item.id)}
+                          onChange={() => toggleSelectItem(item.id)}
+                          className="w-4 h-4 accent-orange-500 cursor-pointer"
+                          aria-label={`Selecionar ${item.productName}`}
+                        />
+                      )}
+                    </td>
+                    <td className="py-2 text-text-muted whitespace-nowrap">{formatDateTime(item.addedAt)}</td>
+                    <td className="py-2">
+                      {item.productName}
+                      {paid && (
+                        <span className="ml-2">
+                          <Badge tone="success">Pago</Badge>
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 text-right font-mono">{item.quantity}</td>
+                    <td className="py-2 text-right font-mono">{formatCurrency(item.unitPrice)}</td>
+                    <td className="py-2 text-right font-mono">{formatCurrency(item.subtotal)}</td>
+                    <td className="py-2 text-right no-print">
+                      {!paid && (
+                        <button
+                          type="button"
+                          title="Remover item"
+                          onClick={() => removeItem(item.id, item.productName, item.productId)}
+                          className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
+
+        {unpaidItems.length > 0 && (
+          <div className="no-print mt-3 rounded-lg border border-border p-3 flex flex-col gap-3 bg-bg/40">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] text-text-muted uppercase tracking-wide">
+                  {selectedItems.length > 0
+                    ? `${selectedItems.length} item(ns) selecionado(s)`
+                    : "Marque os itens que o cliente pagou"}
+                </span>
+                <span className="font-mono text-sm py-2">{formatCurrency(selectedTotal)}</span>
+              </div>
+              <Field label="Forma">
+                <Select value={markPaidMethod} onChange={(e) => setMarkPaidMethod(e.target.value)} className="w-36">
+                  {PAYMENT_METHODS.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </Select>
+              </Field>
+              <Button type="button" onClick={markSelectedPaid} disabled={markPaidLoading || selectedItems.length === 0}>
+                <CheckCircle2 size={16} /> {markPaidLoading ? "Marcando..." : "Marcar selecionados como pago"}
+              </Button>
+            </div>
+            {markPaidError && <p className="text-sm text-danger">{markPaidError}</p>}
+          </div>
+        )}
 
         <div className="no-print mt-3 rounded-lg border border-border p-3 flex flex-col gap-3 bg-bg/40">
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
