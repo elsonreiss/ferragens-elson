@@ -114,8 +114,8 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
 
   const [productId, setProductId] = useState<number | "">("");
   const [productName, setProductName] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [unitPrice, setUnitPrice] = useState("0");
+  const [quantity, setQuantity] = useState("");
+  const [unitPrice, setUnitPrice] = useState("");
   const [itemLoading, setItemLoading] = useState(false);
   const [itemError, setItemError] = useState<string | null>(null);
 
@@ -134,7 +134,9 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
   function updateProductName(name: string) {
     // Digitar sempre desvincula de um produto já selecionado — o texto
     // digitado passa a valer como item avulso até que uma sugestão seja
-    // clicada.
+    // clicada. Se havia um preço vindo do catálogo, ele some junto, pois
+    // deixou de ser um produto cadastrado.
+    if (productId !== "") setUnitPrice("");
     setProductId("");
     setProductName(name);
   }
@@ -143,8 +145,12 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
     setItemError(null);
     const qty = Number(quantity);
     const price = Number(unitPrice);
-    if (qty <= 0) {
-      setItemError("A quantidade deve ser maior que zero.");
+    if (!quantity || qty <= 0) {
+      setItemError("Informe a quantidade.");
+      return;
+    }
+    if (unitPrice === "" || price < 0) {
+      setItemError("Informe o preço.");
       return;
     }
 
@@ -171,8 +177,8 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
       if (!res.ok) throw new Error(json.error ?? "Erro ao adicionar item.");
       setProductId("");
       setProductName("");
-      setQuantity("1");
-      setUnitPrice("0");
+      setQuantity("");
+      setUnitPrice("");
       router.refresh();
     } catch (err) {
       setItemError(err instanceof Error ? err.message : "Erro inesperado.");
@@ -286,6 +292,7 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
                 step="any"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
+                placeholder="0"
                 className="w-24 text-right"
               />
             </div>
@@ -297,6 +304,7 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
                 step="0.01"
                 value={unitPrice}
                 onChange={(e) => setUnitPrice(e.target.value)}
+                placeholder="0,00"
                 className="w-28 text-right"
               />
             </div>
