@@ -26,11 +26,22 @@ function createPool(): Pool {
       "DATABASE_URL não definida. Configure a connection string do seu banco Postgres (ex: Neon, Supabase) na variável de ambiente DATABASE_URL."
     );
   }
-  return new Pool({
+  const pool = new Pool({
     connectionString,
     max: 5,
     ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: false },
   });
+
+  // O "dia" usado em CURRENT_DATE, agregações e relatórios (vendas de hoje,
+  // faturamento do mês, fluxo diário, etc.) deve virar à meia-noite no
+  // horário de Brasília, não no horário do servidor (geralmente UTC). Define
+  // o timezone da sessão em cada conexão do pool para que CURRENT_DATE e
+  // afins já reflitam o horário local corretamente.
+  pool.on("connect", (client) => {
+    client.query("SET TIME ZONE 'America/Sao_Paulo'").catch(() => {});
+  });
+
+  return pool;
 }
 
 export function getPool(): Pool {

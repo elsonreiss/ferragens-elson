@@ -38,6 +38,10 @@ declare module "pg" {
       params?: unknown[]
     ): Promise<QueryResult<R>>;
     end(): Promise<void>;
+    // Usado em connection.ts para ajustar o timezone da sessão a cada nova
+    // conexão do pool (evento "connect" do pg, emitido com o PoolClient recém-
+    // conectado).
+    on(event: "connect", listener: (client: PoolClient) => void): this;
   }
 
   // Usado em connection.ts para desativar o parse automático de colunas de

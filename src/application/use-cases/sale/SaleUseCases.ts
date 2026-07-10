@@ -83,4 +83,25 @@ export class SaleUseCases {
 
     return sale;
   }
+
+  // Exclui a venda e devolve ao estoque os itens vinculados a produtos
+  // cadastrados (itens avulsos não afetaram estoque, então não são
+  // devolvidos). Restrito a admin — checado na rota da API.
+  async delete(id: number) {
+    const sale = await this.repo.findById(id);
+    if (!sale) throw new Error("Venda não encontrada.");
+
+    for (const item of sale.items) {
+      if (!item.productId) continue;
+      await this.productRepo.adjustQuantity(item.productId, item.quantity);
+      await this.stockMovementRepo.create({
+        productId: item.productId,
+        type: "entrada",
+        quantity: item.quantity,
+        reason: `Exclusão de venda${sale.clientName ? " — " + sale.clientName : ""}`,
+      });
+    }
+
+    await this.repo.delete(id);
+  }
 }

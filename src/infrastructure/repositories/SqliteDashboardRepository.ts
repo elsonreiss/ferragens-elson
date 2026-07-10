@@ -2,6 +2,7 @@ import { ensureDb, query, queryOne } from "../db/connection";
 import { DashboardRepository } from "@/domain/repositories";
 import { DashboardSummary } from "@/domain/entities/Dashboard";
 import { SqliteProductRepository } from "./SqliteProductRepository";
+import { saoPauloDateKey, mondayKeyOf } from "@/lib/brDate";
 
 export class SqliteDashboardRepository implements DashboardRepository {
   async getSummary(): Promise<DashboardSummary> {
@@ -74,21 +75,12 @@ export class SqliteDashboardRepository implements DashboardRepository {
     const diarioMap = new Map(diarioRaw.map((r) => [String(r.dia), Number(r.total)]));
     const faturamentoPorDia: DashboardSummary["faturamentoPorDia"] = [];
     for (let i = 13; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      const key = saoPauloDateKey(new Date(Date.now() - i * 86400000));
       faturamentoPorDia.push({ dia: key, total: diarioMap.get(key) ?? 0 });
     }
 
-    // Faturamento por semana (últimas 8 semanas, semana começando na segunda-feira)
-    const mondayOf = (date: Date): Date => {
-      const d = new Date(date);
-      const day = d.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      d.setDate(d.getDate() + diff);
-      d.setHours(0, 0, 0, 0);
-      return d;
-    };
+    // Faturamento por semana (últimas 8 semanas, semana começando na segunda-feira,
+    // alinhado ao dia civil de Brasília via mondayKeyOf/saoPauloDateKey)
     const vendasRecentesRaw = await query<{ dia: string; total: number }>(`
       SELECT created_at::date as dia, total
       FROM sales
@@ -96,14 +88,13 @@ export class SqliteDashboardRepository implements DashboardRepository {
     `);
     const semanaMap = new Map<string, number>();
     for (const r of vendasRecentesRaw) {
-      const key = mondayOf(new Date(`${r.dia}T00:00:00`)).toISOString().slice(0, 10);
+      const key = mondayKeyOf(String(r.dia));
       semanaMap.set(key, (semanaMap.get(key) ?? 0) + Number(r.total));
     }
     const faturamentoPorSemana: DashboardSummary["faturamentoPorSemana"] = [];
     for (let i = 7; i >= 0; i--) {
-      const monday = mondayOf(new Date());
-      monday.setDate(monday.getDate() - i * 7);
-      const key = monday.toISOString().slice(0, 10);
+      const dayKey = saoPauloDateKey(new Date(Date.now() - i * 7 * 86400000));
+      const key = mondayKeyOf(dayKey);
       faturamentoPorSemana.push({ semana: key, total: semanaMap.get(key) ?? 0 });
     }
 

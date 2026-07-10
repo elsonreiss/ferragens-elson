@@ -101,4 +101,10 @@ export class SqliteSaleRepository implements SaleRepository {
 
     return (await this.findById(saleId))!;
   }
+
+  async delete(id: number): Promise<void> {
+    await ensureDb();
+    // sale_items tem ON DELETE CASCADE em sale_id.
+    await query("DELETE FROM sales WHERE id = $1", [id]);
+  }
 }

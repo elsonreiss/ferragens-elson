@@ -1,6 +1,7 @@
 import { ensureDb, query, queryOne } from "../db/connection";
 import { FinanceSummary } from "@/domain/entities/Expense";
 import { FinanceRepository } from "@/domain/repositories";
+import { saoPauloDateKey } from "@/lib/brDate";
 
 export class SqliteFinanceRepository implements FinanceRepository {
   async getSummary(): Promise<FinanceSummary> {
@@ -37,9 +38,7 @@ export class SqliteFinanceRepository implements FinanceRepository {
 
     const fluxoPorDia: FinanceSummary["fluxoPorDia"] = [];
     for (let i = 13; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      const key = saoPauloDateKey(new Date(Date.now() - i * 86400000));
       fluxoPorDia.push({ dia: key, receitas: receitasMap.get(key) ?? 0, despesas: despesasMap.get(key) ?? 0 });
     }
 

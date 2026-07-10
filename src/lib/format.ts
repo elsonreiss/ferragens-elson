@@ -14,14 +14,25 @@ function parseDbDate(raw: string): Date {
   return new Date(s);
 }
 
+// Fixa o fuso em horário de Brasília na formatação — sem isso, o resultado
+// depende do fuso do processo Node (UTC em produção na Vercel), fazendo
+// horários exibidos ficarem 3h adiantados em relação ao horário local.
+const BR_TZ = "America/Sao_Paulo";
+
 export function formatDateTime(iso: string): string {
   const date = parseDbDate(iso);
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: BR_TZ,
+  }).format(date);
 }
 
 export function formatDate(iso: string): string {
   const date = parseDbDate(iso);
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: BR_TZ }).format(date);
 }
 
 export function formatMonthLabel(yyyyMm: string): string {
