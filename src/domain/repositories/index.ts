@@ -1,4 +1,4 @@
-import { Category, Supplier, NewSupplierInput, SupplierFilters, StockMovement, NewStockMovementInput } from "../entities/Common";
+import { Category, Supplier, NewSupplierInput, SupplierFilters, StockMovement, NewStockMovementInput, PagedResult } from "../entities/Common";
 import { DashboardSummary } from "../entities/Dashboard";
 import { Client, NewClientInput, ClientFilters } from "../entities/Client";
 import { Purchase, NewPurchaseInput } from "../entities/Purchase";
@@ -49,6 +49,7 @@ export interface PurchaseRepository {
 
 export interface SaleRepository {
   findAll(): Promise<Sale[]>;
+  findPage(page: number, pageSize: number): Promise<PagedResult<Sale>>;
   findById(id: number): Promise<Sale | null>;
   create(input: NewSaleInput, resolvedItems: Array<{ productId: number | null; productName: string; quantity: number; unitPrice: number; purchasePrice: number; subtotal: number }>, total: number, profit: number): Promise<Sale>;
   delete(id: number): Promise<void>;
@@ -94,8 +95,17 @@ export interface SessionRepository {
   delete(token: string): Promise<void>;
 }
 
+// Registro de tentativas de login (sucesso e falha), usado para bloquear
+// login por e-mail após várias falhas seguidas (proteção contra força bruta).
+export interface LoginAttemptRepository {
+  record(email: string, success: boolean): Promise<void>;
+  countRecentFailures(email: string, sinceMinutesAgo: number): Promise<number>;
+}
+
 export interface ClientNoteRepository {
   findAll(): Promise<ClientNote[]>;
+  findPage(page: number, pageSize: number): Promise<PagedResult<ClientNote>>;
+  getSummary(): Promise<{ totalNotes: number; openCount: number; openBalance: number }>;
   findById(id: number): Promise<ClientNote | null>;
   findByClientId(clientId: number): Promise<ClientNote | null>;
   create(clientId: number, clientName: string): Promise<ClientNote>;

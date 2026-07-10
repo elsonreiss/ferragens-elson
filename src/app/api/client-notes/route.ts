@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { container } from "@/container";
 
-export async function GET() {
-  const notes = await container.clientNoteUseCases.list();
-  return NextResponse.json({ data: notes });
+export async function GET(req: NextRequest) {
+  const page = Number(req.nextUrl.searchParams.get("page")) || 1;
+  const pageSize = Number(req.nextUrl.searchParams.get("pageSize")) || 20;
+  const { items, total } = await container.clientNoteUseCases.listPage(page, pageSize);
+  return NextResponse.json({ data: items, total, page, pageSize });
 }
 
 // Abre (ou retorna, se já existir) a nota fiado de um cliente.

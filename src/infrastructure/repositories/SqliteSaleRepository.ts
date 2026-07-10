@@ -1,5 +1,6 @@
 import { ensureDb, query, queryOne } from "../db/connection";
 import { Sale, SaleItem, NewSaleInput } from "@/domain/entities/Sale";
+import { PagedResult } from "@/domain/entities/Common";
 import { SaleRepository } from "@/domain/repositories";
 
 interface SaleRow {
@@ -51,6 +52,19 @@ export class SqliteSaleRepository implements SaleRepository {
     const result: Sale[] = [];
     for (const row of rows) result.push(await this.mapSale(row));
     return result;
+  }
+
+  async findPage(page: number, pageSize: number): Promise<PagedResult<Sale>> {
+    await ensureDb();
+    const offset = (page - 1) * pageSize;
+    const rows = await query<SaleRow>("SELECT * FROM sales ORDER BY created_at DESC LIMIT $1 OFFSET $2", [
+      pageSize,
+      offset,
+    ]);
+    const totalRow = await queryOne<{ c: number }>("SELECT COUNT(*)::int as c FROM sales");
+    const items: Sale[] = [];
+    for (const row of rows) items.push(await this.mapSale(row));
+    return { items, total: totalRow?.c ?? 0, page, pageSize };
   }
 
   async findById(id: number): Promise<Sale | null> {

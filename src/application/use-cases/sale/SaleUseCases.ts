@@ -13,6 +13,12 @@ export class SaleUseCases {
     return this.repo.findAll();
   }
 
+  listPage(page: number, pageSize: number) {
+    const safePage = Math.max(1, Math.floor(page) || 1);
+    const safePageSize = Math.min(100, Math.max(1, Math.floor(pageSize) || 20));
+    return this.repo.findPage(safePage, safePageSize);
+  }
+
   getById(id: number) {
     return this.repo.findById(id);
   }

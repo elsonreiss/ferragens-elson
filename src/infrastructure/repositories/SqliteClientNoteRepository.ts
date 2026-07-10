@@ -7,6 +7,7 @@ import {
   NewClientNotePaymentInput,
   MarkItemsPaidInput,
 } from "@/domain/entities/ClientNote";
+import { PagedResult } from "@/domain/entities/Common";
 import { ClientNoteRepository } from "@/domain/repositories";
 
 interface NoteRow {
@@ -82,6 +83,49 @@ export class SqliteClientNoteRepository implements ClientNoteRepository {
     const result: ClientNote[] = [];
     for (const row of rows) result.push(await this.mapNote(row));
     return result;
+  }
+
+  async findPage(page: number, pageSize: number): Promise<PagedResult<ClientNote>> {
+    await ensureDb();
+    const offset = (page - 1) * pageSize;
+    const rows = await query<NoteRow>(`${NOTE_SELECT} ORDER BY cn.updated_at DESC LIMIT $1 OFFSET $2`, [
+      pageSize,
+      offset,
+    ]);
+    const totalRow = await queryOne<{ c: number }>("SELECT COUNT(*)::int as c FROM client_notes");
+    const items: ClientNote[] = [];
+    for (const row of rows) items.push(await this.mapNote(row));
+    return { items, total: totalRow?.c ?? 0, page, pageSize };
+  }
+
+  // Totais globais (todas as notas, não só a página atual) para o resumo no
+  // topo da listagem — calculado direto em SQL para não precisar carregar
+  // todas as notas com seus itens/pagamentos só para somar.
+  async getSummary(): Promise<{ totalNotes: number; openCount: number; openBalance: number }> {
+    await ensureDb();
+    const row = await queryOne<{ total_notes: number; open_count: number; open_balance: number }>(`
+      SELECT
+        COUNT(*)::int AS total_notes,
+        COUNT(*) FILTER (WHERE GREATEST(balance, 0) > 0.005)::int AS open_count,
+        COALESCE(SUM(GREATEST(balance, 0)), 0) AS open_balance
+      FROM (
+        SELECT
+          cn.id,
+          COALESCE(item_totals.total, 0) - COALESCE(payment_totals.paid, 0) AS balance
+        FROM client_notes cn
+        LEFT JOIN (
+          SELECT note_id, SUM(subtotal) AS total FROM client_note_items GROUP BY note_id
+        ) item_totals ON item_totals.note_id = cn.id
+        LEFT JOIN (
+          SELECT note_id, SUM(amount) AS paid FROM client_note_payments GROUP BY note_id
+        ) payment_totals ON payment_totals.note_id = cn.id
+      ) sub
+    `);
+    return {
+      totalNotes: row?.total_notes ?? 0,
+      openCount: row?.open_count ?? 0,
+      openBalance: Number(row?.open_balance ?? 0),
+    };
   }
 
   async findById(id: number): Promise<ClientNote | null> {

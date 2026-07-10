@@ -51,3 +51,12 @@ export interface NewStockMovementInput {
   quantity: number;
   reason?: string;
 }
+
+// Resultado paginado genérico, usado nas listagens que crescem muito
+// (vendas, notas de clientes) para não carregar a tabela inteira de uma vez.
+export interface PagedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}

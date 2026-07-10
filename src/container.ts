@@ -15,6 +15,7 @@ import { SqliteReportRepository } from "@/infrastructure/repositories/SqliteRepo
 import { SqliteUserRepository } from "@/infrastructure/repositories/SqliteUserRepository";
 import { SqliteSessionRepository } from "@/infrastructure/repositories/SqliteSessionRepository";
 import { SqliteClientNoteRepository } from "@/infrastructure/repositories/SqliteClientNoteRepository";
+import { SqliteLoginAttemptRepository } from "@/infrastructure/repositories/SqliteLoginAttemptRepository";
 
 import { ProductUseCases } from "@/application/use-cases/product/ProductUseCases";
 import { StockMovementUseCases } from "@/application/use-cases/product/StockMovementUseCases";
@@ -48,6 +49,7 @@ const reportRepository = new SqliteReportRepository();
 const userRepository = new SqliteUserRepository();
 const sessionRepository = new SqliteSessionRepository();
 const clientNoteRepository = new SqliteClientNoteRepository();
+const loginAttemptRepository = new SqliteLoginAttemptRepository();
 
 const saleUseCases = new SaleUseCases(saleRepository, productRepository, stockMovementRepository);
 
@@ -67,6 +69,7 @@ export const container = {
   userRepository,
   sessionRepository,
   clientNoteRepository,
+  loginAttemptRepository,
   productUseCases: new ProductUseCases(productRepository),
   stockMovementUseCases: new StockMovementUseCases(productRepository, stockMovementRepository),
   dashboardUseCases: new DashboardUseCases(dashboardRepository),
@@ -77,7 +80,7 @@ export const container = {
   financeUseCases: new FinanceUseCases(expenseRepository, financeRepository),
   budgetUseCases: new BudgetUseCases(budgetRepository, saleUseCases),
   reportUseCases: new ReportUseCases(reportRepository, saleRepository, productRepository),
-  authUseCases: new AuthUseCases(userRepository, sessionRepository),
+  authUseCases: new AuthUseCases(userRepository, sessionRepository, loginAttemptRepository),
   userUseCases: new UserUseCases(userRepository),
   clientNoteUseCases: new ClientNoteUseCases(clientNoteRepository, clientRepository, productRepository, stockMovementRepository),
 };

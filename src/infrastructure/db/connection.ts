@@ -280,12 +280,28 @@ async function runMigrations(client: PoolClient) {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- Tentativas de login (sucesso e falha), usadas para bloquear login por
+    -- e-mail após várias falhas seguidas (proteção contra força bruta).
+    CREATE TABLE IF NOT EXISTS login_attempts (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL,
+      success BOOLEAN NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_login_attempts_email_time ON login_attempts(email, created_at DESC);
+
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
     CREATE INDEX IF NOT EXISTS idx_stock_movements_product ON stock_movements(product_id);
     CREATE INDEX IF NOT EXISTS idx_sale_items_sale ON sale_items(sale_id);
     CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase ON purchase_items(purchase_id);
     CREATE INDEX IF NOT EXISTS idx_budget_items_budget ON budget_items(budget_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+    -- "created_at" é a coluna mais consultada do sistema: dashboard ("vendido
+    -- hoje"/mês), relatórios e agora paginação/ordenação das listagens. Sem
+    -- índice, cada consulta faz sequential scan nas tabelas sales/expenses.
+    CREATE INDEX IF NOT EXISTS idx_sales_created_at ON sales(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_expenses_created_at ON expenses(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_client_notes_updated_at ON client_notes(updated_at DESC);
 
     ALTER TABLE sales ADD COLUMN IF NOT EXISTS client_id INTEGER REFERENCES clients(id);
     ALTER TABLE budgets ADD COLUMN IF NOT EXISTS client_id INTEGER REFERENCES clients(id);

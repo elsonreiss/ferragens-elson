@@ -7,11 +7,18 @@ import { Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { Pagination } from "@/components/ui/Pagination";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { Sale } from "@/domain/entities/Sale";
 import { User } from "@/domain/entities/User";
 
-export function SalesTable({ sales }: { sales: Sale[] }) {
+interface SalesTableProps {
+  sales: Sale[];
+  page?: number;
+  totalPages?: number;
+}
+
+export function SalesTable({ sales, page = 1, totalPages = 1 }: SalesTableProps) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -115,6 +122,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalPages={totalPages} basePath="/vendas" />
       </Card>
     </div>
   );

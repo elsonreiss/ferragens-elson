@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { container } from "@/container";
 import { NewSaleInput } from "@/domain/entities/Sale";
 
-export async function GET() {
-  const sales = await container.saleUseCases.list();
-  return NextResponse.json({ data: sales });
+export async function GET(req: NextRequest) {
+  const page = Number(req.nextUrl.searchParams.get("page")) || 1;
+  const pageSize = Number(req.nextUrl.searchParams.get("pageSize")) || 20;
+  const { items, total } = await container.saleUseCases.listPage(page, pageSize);
+  return NextResponse.json({ data: items, total, page, pageSize });
 }
 
 export async function POST(req: NextRequest) {

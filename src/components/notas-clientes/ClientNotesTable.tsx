@@ -7,10 +7,17 @@ import { Eye, Trash2, Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { Pagination } from "@/components/ui/Pagination";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { ClientNote } from "@/domain/entities/ClientNote";
 
-export function ClientNotesTable({ notes: initialNotes }: { notes: ClientNote[] }) {
+interface ClientNotesTableProps {
+  notes: ClientNote[];
+  page?: number;
+  totalPages?: number;
+}
+
+export function ClientNotesTable({ notes: initialNotes, page = 1, totalPages = 1 }: ClientNotesTableProps) {
   const router = useRouter();
   const [notes, setNotes] = useState(initialNotes);
 
@@ -93,6 +100,7 @@ export function ClientNotesTable({ notes: initialNotes }: { notes: ClientNote[] 
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalPages={totalPages} basePath="/notas-clientes" />
       </Card>
     </div>
   );
