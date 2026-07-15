@@ -435,13 +435,15 @@ async function seedIfEmpty(client: PoolClient) {
 
 // Importa o catálogo de 1078 produtos extraído da ficha de estoque (PDF
 // "RELATÓRIO DE PRODUTOS") do sistema anterior do Elson. Usa
-// ON CONFLICT (code) DO NOTHING para ser idempotente: roda em todo cold
-// start (dentro do mesmo cache de ensureDb), mas só insere produtos cujo
-// código ainda não existe — não sobrescreve edições feitas depois pelo
-// usuário nem duplica em reinícios. Categoria, fornecedor, código de barras
-// e localização não vieram na ficha e ficam em branco (podem ser
-// preenchidos manualmente depois). Campos fiscais (NCM/CFOP) da ficha não
-// são armazenados pois o catálogo atual não modela esses campos.
+// ON CONFLICT (code) DO NOTHING/UPDATE para ser idempotente: roda em todo
+// cold start (dentro do mesmo cache de ensureDb), mas só insere produtos
+// cujo código ainda não existe — não sobrescreve edições feitas depois pelo
+// usuário nem duplica em reinícios. O código de barras é o NCM (código
+// fiscal) da ficha, a pedido do Elson — 5 produtos vieram sem NCM na ficha
+// original e ficam sem código de barras. Categoria, fornecedor e
+// localização não vieram na ficha e ficam em branco (podem ser preenchidos
+// manualmente depois). CFOP da ficha não é armazenado pois o catálogo atual
+// não modela esse campo.
 async function importFichaProducts(client: PoolClient) {
   const products = fichaProducts as Array<{
     code: string;
@@ -451,13 +453,14 @@ async function importFichaProducts(client: PoolClient) {
     salePrice: number;
     minStock: number;
     quantity: number;
+    barcode: string | null;
   }>;
   if (products.length === 0) return;
 
   await client.query(
-    `INSERT INTO products (code, name, unit, purchase_price, sale_price, min_stock, quantity)
-     SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::double precision[], $5::double precision[], $6::double precision[], $7::double precision[])
-     ON CONFLICT (code) DO NOTHING`,
+    `INSERT INTO products (code, name, unit, purchase_price, sale_price, min_stock, quantity, barcode)
+     SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::double precision[], $5::double precision[], $6::double precision[], $7::double precision[], $8::text[])
+     ON CONFLICT (code) DO UPDATE SET barcode = EXCLUDED.barcode WHERE products.barcode IS NULL`,
     [
       products.map((p) => p.code),
       products.map((p) => p.name),
@@ -466,6 +469,7 @@ async function importFichaProducts(client: PoolClient) {
       products.map((p) => p.salePrice),
       products.map((p) => p.minStock),
       products.map((p) => p.quantity),
+      products.map((p) => p.barcode),
     ]
   );
 }
