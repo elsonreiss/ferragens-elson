@@ -83,11 +83,25 @@ export async function ensureDb(): Promise<void> {
         await runMigrations(client);
         await seedIfEmpty(client);
         await seedDefaultAdmin(client);
-        await importFichaProducts(client);
+        // A importação dos produtos da ficha é isolada num try/catch próprio:
+        // se ela falhar por algum motivo (ex: dado inesperado num dos 1078
+        // registros), não pode derrubar o app inteiro — as tabelas essenciais
+        // (migrations/seed/admin) já foram garantidas acima.
+        try {
+          await importFichaProducts(client);
+        } catch (err) {
+          console.error("Falha ao importar produtos da ficha.pdf (ignorado, app continua funcionando):", err);
+        }
       } finally {
         client.release();
       }
-    })();
+    })().catch((err) => {
+      // Se algo essencial (migrations/seed/admin) falhar, não deixa a
+      // promise rejeitada presa em cache: a próxima requisição tenta de
+      // novo, em vez do app ficar quebrado até reiniciar o servidor.
+      global.__pgReady__ = undefined;
+      throw err;
+    });
   }
   return global.__pgReady__;
 }
