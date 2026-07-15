@@ -1,5 +1,6 @@
 import { Pool, PoolClient, QueryResultRow, types } from "pg";
 import { scryptSync, randomBytes } from "node:crypto";
+import fichaProducts from "./seed-data/ficha-products.json";
 
 // Banco de dados PostgreSQL (ex: Neon, Supabase, Vercel Postgres, Railway).
 // Defina a variável de ambiente DATABASE_URL com a connection string do seu banco.
@@ -82,6 +83,7 @@ export async function ensureDb(): Promise<void> {
         await runMigrations(client);
         await seedIfEmpty(client);
         await seedDefaultAdmin(client);
+        await importFichaProducts(client);
       } finally {
         client.release();
       }
@@ -429,4 +431,41 @@ async function seedIfEmpty(client: PoolClient) {
   };
   await insertMovement(1, "entrada", 100, "Compra inicial", 10);
   await insertMovement(1, "saida", 20, "Venda balcão", 1);
+}
+
+// Importa o catálogo de 1078 produtos extraído da ficha de estoque (PDF
+// "RELATÓRIO DE PRODUTOS") do sistema anterior do Elson. Usa
+// ON CONFLICT (code) DO NOTHING para ser idempotente: roda em todo cold
+// start (dentro do mesmo cache de ensureDb), mas só insere produtos cujo
+// código ainda não existe — não sobrescreve edições feitas depois pelo
+// usuário nem duplica em reinícios. Categoria, fornecedor, código de barras
+// e localização não vieram na ficha e ficam em branco (podem ser
+// preenchidos manualmente depois). Campos fiscais (NCM/CFOP) da ficha não
+// são armazenados pois o catálogo atual não modela esses campos.
+async function importFichaProducts(client: PoolClient) {
+  const products = fichaProducts as Array<{
+    code: string;
+    name: string;
+    unit: string;
+    purchasePrice: number;
+    salePrice: number;
+    minStock: number;
+    quantity: number;
+  }>;
+  if (products.length === 0) return;
+
+  await client.query(
+    `INSERT INTO products (code, name, unit, purchase_price, sale_price, min_stock, quantity)
+     SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::double precision[], $5::double precision[], $6::double precision[], $7::double precision[])
+     ON CONFLICT (code) DO NOTHING`,
+    [
+      products.map((p) => p.code),
+      products.map((p) => p.name),
+      products.map((p) => p.unit),
+      products.map((p) => p.purchasePrice),
+      products.map((p) => p.salePrice),
+      products.map((p) => p.minStock),
+      products.map((p) => p.quantity),
+    ]
+  );
 }
