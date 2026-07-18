@@ -27,6 +27,9 @@ export class SaleUseCases {
     if (!input.items || input.items.length === 0) {
       throw new Error("Adicione ao menos um item à venda.");
     }
+    if (input.createdAt && Number.isNaN(Date.parse(input.createdAt))) {
+      throw new Error("Data da venda inválida.");
+    }
 
     const resolvedItems: Array<{
       productId: number | null;

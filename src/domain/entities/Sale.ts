@@ -33,4 +33,9 @@ export interface NewSaleInput {
   clientName?: string;
   paymentMethod?: string;
   items: NewSaleItemInput[];
+  // Data/hora da venda em ISO 8601 (ex: "2026-07-10T14:30:00-03:00"). Opcional
+  // — se não informado, o banco usa o momento atual (now()). Permite registrar
+  // uma venda retroativa (de um dia anterior) para que ela conte no dia certo
+  // nos relatórios e no dashboard.
+  createdAt?: string;
 }

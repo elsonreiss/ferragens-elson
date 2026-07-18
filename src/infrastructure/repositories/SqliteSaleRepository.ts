@@ -96,11 +96,14 @@ export class SqliteSaleRepository implements SaleRepository {
       clientName = client?.name ?? clientName;
     }
 
+    // created_at aceita uma data retroativa (input.createdAt) para permitir
+    // registrar uma venda em um dia anterior — se não vier, usa now() como
+    // sempre foi.
     const inserted = await queryOne<{ id: number }>(
-      `INSERT INTO sales (client_id, client_name, total, profit, payment_method)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO sales (client_id, client_name, total, profit, payment_method, created_at)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6::timestamptz, now()))
        RETURNING id`,
-      [input.clientId ?? null, clientName, total, profit, input.paymentMethod ?? null]
+      [input.clientId ?? null, clientName, total, profit, input.paymentMethod ?? null, input.createdAt ?? null]
     );
 
     const saleId = inserted!.id;
