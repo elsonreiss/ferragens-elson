@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Form";
 import { StockStatusBadge } from "@/components/estoque/StockStatusBadge";
 import { StockMovementModal } from "@/components/estoque/StockMovementModal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatCurrency } from "@/lib/format";
 import { Product, getStockStatus } from "@/domain/entities/Product";
 import { Category } from "@/domain/entities/Common";
@@ -22,6 +23,8 @@ export function ProductsTable({ initialProducts, categories }: { initialProducts
   const [statusFilter, setStatusFilter] = useState<"todos" | "falta" | "baixo" | "ok">("todos");
   const [movementProduct, setMovementProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<{ id: number; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setProducts(initialProducts);
@@ -45,8 +48,8 @@ export function ProductsTable({ initialProducts, categories }: { initialProducts
     return () => controller.abort();
   }, [search, categoryId, statusFilter]);
 
-  async function handleDelete(id: number, name: string) {
-    if (!confirm(`Excluir o produto "${name}"? Essa ação não pode ser desfeita.`)) return;
+  async function handleDelete(id: number) {
+    setDeleting(true);
     const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
     if (res.ok) {
       setProducts((prev) => prev.filter((p) => p.id !== id));
@@ -55,6 +58,8 @@ export function ProductsTable({ initialProducts, categories }: { initialProducts
       const json = await res.json();
       alert(json.error ?? "Erro ao excluir produto.");
     }
+    setDeleting(false);
+    setConfirmTarget(null);
   }
 
   const counts = useMemo(() => {
@@ -154,7 +159,7 @@ export function ProductsTable({ initialProducts, categories }: { initialProducts
                       </Link>
                       <button
                         title="Excluir"
-                        onClick={() => handleDelete(p.id, p.name)}
+                        onClick={() => setConfirmTarget({ id: p.id, name: p.name })}
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
                       >
                         <Trash2 size={16} />
@@ -170,6 +175,17 @@ export function ProductsTable({ initialProducts, categories }: { initialProducts
 
       {movementProduct && (
         <StockMovementModal product={movementProduct} onClose={() => setMovementProduct(null)} />
+      )}
+
+      {confirmTarget && (
+        <ConfirmDialog
+          title="Excluir produto"
+          message={`Excluir o produto "${confirmTarget.name}"? Essa ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          loading={deleting}
+          onConfirm={() => handleDelete(confirmTarget.id)}
+          onCancel={() => setConfirmTarget(null)}
+        />
       )}
     </div>
   );

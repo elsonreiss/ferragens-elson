@@ -6,6 +6,7 @@ import { Plus, Trash2, Search, ChevronDown, HandCoins, CheckCircle2 } from "luci
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Field } from "@/components/ui/Form";
 import { Badge } from "@/components/ui/Badge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatCurrency, formatDateTime, cn } from "@/lib/format";
 import { ClientNote } from "@/domain/entities/ClientNote";
 import { Product } from "@/domain/entities/Product";
@@ -131,6 +132,9 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
   const [markPaidLoading, setMarkPaidLoading] = useState(false);
   const [markPaidError, setMarkPaidError] = useState<string | null>(null);
 
+  const [confirmRemoveItem, setConfirmRemoveItem] = useState<{ itemId: number; name: string; itemProductId: number | null } | null>(null);
+  const [removingItem, setRemovingItem] = useState(false);
+
   function selectProduct(product: Product) {
     setProductId(product.id);
     setProductName(product.name);
@@ -193,9 +197,8 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
     }
   }
 
-  async function removeItem(itemId: number, name: string, itemProductId: number | null) {
-    const stockNote = itemProductId ? " O item volta para o estoque." : "";
-    if (!confirm(`Remover "${name}" desta nota?${stockNote}`)) return;
+  async function removeItem(itemId: number) {
+    setRemovingItem(true);
     const res = await fetch(`/api/client-notes/${note.id}/items/${itemId}`, { method: "DELETE" });
     if (res.ok) {
       router.refresh();
@@ -203,6 +206,8 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
       const json = await res.json();
       alert(json.error ?? "Erro ao remover item.");
     }
+    setRemovingItem(false);
+    setConfirmRemoveItem(null);
   }
 
   async function addPayment() {
@@ -325,7 +330,7 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
                         <button
                           type="button"
                           title="Remover item"
-                          onClick={() => removeItem(item.id, item.productName, item.productId)}
+                          onClick={() => setConfirmRemoveItem({ itemId: item.id, name: item.productName, itemProductId: item.productId })}
                           className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
                         >
                           <Trash2 size={14} />
@@ -492,6 +497,17 @@ export function ClientNoteManage({ note, products }: { note: ClientNote; product
           </div>
         </div>
       </div>
+
+      {confirmRemoveItem && (
+        <ConfirmDialog
+          title="Remover item"
+          message={`Remover "${confirmRemoveItem.name}" desta nota?${confirmRemoveItem.itemProductId ? " O item volta para o estoque." : ""}`}
+          confirmLabel="Remover"
+          loading={removingItem}
+          onConfirm={() => removeItem(confirmRemoveItem.itemId)}
+          onCancel={() => setConfirmRemoveItem(null)}
+        />
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Printer, MessageCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ClientNote } from "@/domain/entities/ClientNote";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 
@@ -31,14 +32,9 @@ export function ClientNoteActions({ note, clientWhatsapp }: { note: ClientNote; 
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function handleDelete() {
-    if (
-      !confirm(
-        `Excluir a nota de "${note.clientName}"? Os itens ainda não pagos voltam para o estoque. Essa ação não pode ser desfeita.`
-      )
-    )
-      return;
     setLoading(true);
     setError(null);
     try {
@@ -50,6 +46,7 @@ export function ClientNoteActions({ note, clientWhatsapp }: { note: ClientNote; 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
       setLoading(false);
+      setConfirmOpen(false);
     }
   }
 
@@ -69,12 +66,23 @@ export function ClientNoteActions({ note, clientWhatsapp }: { note: ClientNote; 
         <Button variant="secondary" onClick={shareWhatsApp}>
           <MessageCircle size={16} /> Enviar por WhatsApp
         </Button>
-        <Button variant="danger" disabled={loading} onClick={handleDelete}>
+        <Button variant="danger" disabled={loading} onClick={() => setConfirmOpen(true)}>
           <Trash2 size={16} /> Excluir nota
         </Button>
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}
+
+      {confirmOpen && (
+        <ConfirmDialog
+          title="Excluir nota"
+          message={`Excluir a nota de "${note.clientName}"? Os itens ainda não pagos voltam para o estoque. Essa ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          loading={loading}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
     </div>
   );
 }

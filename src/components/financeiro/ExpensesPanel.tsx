@@ -6,6 +6,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Expense } from "@/domain/entities/Expense";
 import { ExpenseModal } from "@/components/financeiro/ExpenseModal";
@@ -13,11 +14,15 @@ import { ExpenseModal } from "@/components/financeiro/ExpenseModal";
 export function ExpensesPanel({ expenses }: { expenses: Expense[] }) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function handleDelete(id: number) {
-    if (!confirm("Excluir esta despesa?")) return;
+    setDeleting(true);
     const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
     if (res.ok) router.refresh();
+    setDeleting(false);
+    setConfirmId(null);
   }
 
   return (
@@ -44,7 +49,7 @@ export function ExpensesPanel({ expenses }: { expenses: Expense[] }) {
             <div className="flex items-center gap-3">
               <span className="font-mono text-sm text-danger">{formatCurrency(e.amount)}</span>
               <button
-                onClick={() => handleDelete(e.id)}
+                onClick={() => setConfirmId(e.id)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
               >
                 <Trash2 size={14} />
@@ -55,6 +60,17 @@ export function ExpensesPanel({ expenses }: { expenses: Expense[] }) {
       </div>
 
       {modalOpen && <ExpenseModal onClose={() => setModalOpen(false)} />}
+
+      {confirmId !== null && (
+        <ConfirmDialog
+          title="Excluir despesa"
+          message="Excluir esta despesa?"
+          confirmLabel="Excluir"
+          loading={deleting}
+          onConfirm={() => handleDelete(confirmId)}
+          onCancel={() => setConfirmId(null)}
+        />
+      )}
     </Card>
   );
 }

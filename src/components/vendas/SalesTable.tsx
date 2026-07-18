@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { Sale } from "@/domain/entities/Sale";
 import { User } from "@/domain/entities/User";
@@ -23,6 +24,7 @@ export function SalesTable({ sales, page = 1, totalPages = 1 }: SalesTableProps)
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmSale, setConfirmSale] = useState<Sale | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDate, setEditDate] = useState("");
   const [savingDate, setSavingDate] = useState(false);
@@ -71,12 +73,6 @@ export function SalesTable({ sales, page = 1, totalPages = 1 }: SalesTableProps)
   }
 
   async function handleDelete(sale: Sale) {
-    if (
-      !confirm(
-        `Excluir a venda de "${sale.clientName ?? "Consumidor não identificado"}"? Os itens vinculados a produtos cadastrados voltam para o estoque. Essa ação não pode ser desfeita.`
-      )
-    )
-      return;
     setError(null);
     setDeletingId(sale.id);
     try {
@@ -88,6 +84,7 @@ export function SalesTable({ sales, page = 1, totalPages = 1 }: SalesTableProps)
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
       setDeletingId(null);
+      setConfirmSale(null);
     }
   }
 
@@ -188,7 +185,7 @@ export function SalesTable({ sales, page = 1, totalPages = 1 }: SalesTableProps)
                           type="button"
                           title="Excluir venda"
                           disabled={deletingId === s.id}
-                          onClick={() => handleDelete(s)}
+                          onClick={() => { setError(null); setConfirmSale(s); }}
                           className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors disabled:opacity-50"
                         >
                           <Trash2 size={14} />
@@ -203,6 +200,17 @@ export function SalesTable({ sales, page = 1, totalPages = 1 }: SalesTableProps)
         </div>
         <Pagination page={page} totalPages={totalPages} basePath="/vendas" />
       </Card>
+
+      {confirmSale && (
+        <ConfirmDialog
+          title="Excluir venda"
+          message={`Excluir a venda de "${confirmSale.clientName ?? "Consumidor não identificado"}"? Os itens vinculados a produtos cadastrados voltam para o estoque. Essa ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          loading={deletingId === confirmSale.id}
+          onConfirm={() => handleDelete(confirmSale)}
+          onCancel={() => setConfirmSale(null)}
+        />
+      )}
     </div>
   );
 }

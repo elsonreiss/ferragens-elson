@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { User } from "@/domain/entities/User";
 import { ROLE_LABELS } from "@/lib/auth";
 import { UserModal } from "@/components/configuracoes/UserModal";
@@ -13,9 +14,11 @@ import { UserModal } from "@/components/configuracoes/UserModal";
 export function UsersPanel({ users, currentUserId }: { users: User[]; currentUserId: number }) {
   const router = useRouter();
   const [modalUser, setModalUser] = useState<User | "new" | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<{ id: number; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  async function handleDelete(id: number, name: string) {
-    if (!confirm(`Excluir o usuário "${name}"?`)) return;
+  async function handleDelete(id: number) {
+    setDeleting(true);
     const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
     if (res.ok) {
       router.refresh();
@@ -23,6 +26,8 @@ export function UsersPanel({ users, currentUserId }: { users: User[]; currentUse
       const json = await res.json();
       alert(json.error ?? "Erro ao excluir usuário.");
     }
+    setDeleting(false);
+    setConfirmTarget(null);
   }
 
   return (
@@ -54,7 +59,7 @@ export function UsersPanel({ users, currentUserId }: { users: User[]; currentUse
               </button>
               {u.id !== currentUserId && (
                 <button
-                  onClick={() => handleDelete(u.id, u.name)}
+                  onClick={() => setConfirmTarget({ id: u.id, name: u.name })}
                   className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
                 >
                   <Trash2 size={15} />
@@ -67,6 +72,17 @@ export function UsersPanel({ users, currentUserId }: { users: User[]; currentUse
 
       {modalUser && (
         <UserModal user={modalUser === "new" ? undefined : modalUser} onClose={() => setModalUser(null)} />
+      )}
+
+      {confirmTarget && (
+        <ConfirmDialog
+          title="Excluir usuário"
+          message={`Excluir o usuário "${confirmTarget.name}"?`}
+          confirmLabel="Excluir"
+          loading={deleting}
+          onConfirm={() => handleDelete(confirmTarget.id)}
+          onCancel={() => setConfirmTarget(null)}
+        />
       )}
     </Card>
   );

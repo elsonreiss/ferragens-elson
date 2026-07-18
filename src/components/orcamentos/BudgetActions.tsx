@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Printer, MessageCircle, CheckCircle2, XCircle, ArrowRightLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Budget, BudgetStatus } from "@/domain/entities/Budget";
 import { formatCurrency } from "@/lib/format";
 
@@ -24,6 +25,8 @@ export function BudgetActions({ budget, clientWhatsapp }: { budget: Budget; clie
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmConvert, setConfirmConvert] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const canAct = budget.status !== "convertido";
 
@@ -47,7 +50,6 @@ export function BudgetActions({ budget, clientWhatsapp }: { budget: Budget; clie
   }
 
   async function convertToSale() {
-    if (!confirm("Converter este orçamento em venda? O estoque dos produtos será baixado.")) return;
     setLoading(true);
     setError(null);
     try {
@@ -62,13 +64,12 @@ export function BudgetActions({ budget, clientWhatsapp }: { budget: Budget; clie
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
-    } finally {
       setLoading(false);
+      setConfirmConvert(false);
     }
   }
 
   async function handleDelete() {
-    if (!confirm(`Excluir o orçamento #${budget.id}? Essa ação não pode ser desfeita.`)) return;
     setLoading(true);
     setError(null);
     try {
@@ -80,6 +81,7 @@ export function BudgetActions({ budget, clientWhatsapp }: { budget: Budget; clie
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
       setLoading(false);
+      setConfirmDelete(false);
     }
   }
 
@@ -109,19 +111,42 @@ export function BudgetActions({ budget, clientWhatsapp }: { budget: Budget; clie
           <Button variant="ghost" disabled={loading} onClick={() => updateStatus("recusado")}>
             <XCircle size={16} /> Marcar como recusado
           </Button>
-          <Button disabled={loading} onClick={convertToSale}>
+          <Button disabled={loading} onClick={() => setConfirmConvert(true)}>
             <ArrowRightLeft size={16} /> Converter em venda
           </Button>
         </div>
       )}
 
       <div>
-        <Button variant="danger" disabled={loading} onClick={handleDelete}>
+        <Button variant="danger" disabled={loading} onClick={() => setConfirmDelete(true)}>
           <Trash2 size={16} /> Excluir orçamento
         </Button>
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}
+
+      {confirmConvert && (
+        <ConfirmDialog
+          title="Converter em venda"
+          message="Converter este orçamento em venda? O estoque dos produtos será baixado."
+          confirmLabel="Converter"
+          danger={false}
+          loading={loading}
+          onConfirm={convertToSale}
+          onCancel={() => setConfirmConvert(false)}
+        />
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Excluir orçamento"
+          message={`Excluir o orçamento #${budget.id}? Essa ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          loading={loading}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
     </div>
   );
 }

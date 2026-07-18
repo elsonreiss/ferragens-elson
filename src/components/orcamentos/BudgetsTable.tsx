@@ -7,6 +7,7 @@ import { Plus, Eye, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Budget, BudgetStatus } from "@/domain/entities/Budget";
 
@@ -27,9 +28,11 @@ const STATUS_LABEL: Record<BudgetStatus, string> = {
 export function BudgetsTable({ budgets: initialBudgets }: { budgets: Budget[] }) {
   const router = useRouter();
   const [budgets, setBudgets] = useState(initialBudgets);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function handleDelete(id: number) {
-    if (!confirm(`Excluir o orçamento #${id}? Essa ação não pode ser desfeita.`)) return;
+    setDeleting(true);
     const res = await fetch(`/api/budgets/${id}`, { method: "DELETE" });
     if (res.ok) {
       setBudgets((prev) => prev.filter((b) => b.id !== id));
@@ -38,6 +41,8 @@ export function BudgetsTable({ budgets: initialBudgets }: { budgets: Budget[] })
       const json = await res.json();
       alert(json.error ?? "Erro ao excluir orçamento.");
     }
+    setDeleting(false);
+    setConfirmId(null);
   }
 
   return (
@@ -91,7 +96,7 @@ export function BudgetsTable({ budgets: initialBudgets }: { budgets: Budget[] })
                       </Link>
                       <button
                         title="Excluir"
-                        onClick={() => handleDelete(b.id)}
+                        onClick={() => setConfirmId(b.id)}
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
                       >
                         <Trash2 size={16} />
@@ -104,6 +109,17 @@ export function BudgetsTable({ budgets: initialBudgets }: { budgets: Budget[] })
           </table>
         </div>
       </Card>
+
+      {confirmId !== null && (
+        <ConfirmDialog
+          title="Excluir orçamento"
+          message={`Excluir o orçamento #${confirmId}? Essa ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          loading={deleting}
+          onConfirm={() => handleDelete(confirmId)}
+          onCancel={() => setConfirmId(null)}
+        />
+      )}
     </div>
   );
 }

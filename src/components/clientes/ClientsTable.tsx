@@ -7,6 +7,7 @@ import { Search, Plus, Pencil, Trash2, Phone, Mail } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Form";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Client } from "@/domain/entities/Client";
 
 export function ClientsTable({ initialClients }: { initialClients: Client[] }) {
@@ -14,6 +15,8 @@ export function ClientsTable({ initialClients }: { initialClients: Client[] }) {
   const [clients, setClients] = useState(initialClients);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<{ id: number; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setClients(initialClients);
@@ -32,8 +35,8 @@ export function ClientsTable({ initialClients }: { initialClients: Client[] }) {
     return () => controller.abort();
   }, [search]);
 
-  async function handleDelete(id: number, name: string) {
-    if (!confirm(`Excluir o cliente "${name}"? Essa ação não pode ser desfeita.`)) return;
+  async function handleDelete(id: number) {
+    setDeleting(true);
     const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
     if (res.ok) {
       setClients((prev) => prev.filter((c) => c.id !== id));
@@ -42,6 +45,8 @@ export function ClientsTable({ initialClients }: { initialClients: Client[] }) {
       const json = await res.json();
       alert(json.error ?? "Erro ao excluir cliente.");
     }
+    setDeleting(false);
+    setConfirmTarget(null);
   }
 
   return (
@@ -116,7 +121,7 @@ export function ClientsTable({ initialClients }: { initialClients: Client[] }) {
                       </Link>
                       <button
                         title="Excluir"
-                        onClick={() => handleDelete(c.id, c.name)}
+                        onClick={() => setConfirmTarget({ id: c.id, name: c.name })}
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
                       >
                         <Trash2 size={16} />
@@ -129,6 +134,17 @@ export function ClientsTable({ initialClients }: { initialClients: Client[] }) {
           </table>
         </div>
       </Card>
+
+      {confirmTarget && (
+        <ConfirmDialog
+          title="Excluir cliente"
+          message={`Excluir o cliente "${confirmTarget.name}"? Essa ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          loading={deleting}
+          onConfirm={() => handleDelete(confirmTarget.id)}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
     </div>
   );
 }

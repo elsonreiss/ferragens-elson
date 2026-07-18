@@ -7,6 +7,7 @@ import { Search, Plus, Pencil, Trash2, Phone, Mail } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Form";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Supplier } from "@/domain/entities/Common";
 
 export function SuppliersTable({ initialSuppliers }: { initialSuppliers: Supplier[] }) {
@@ -14,6 +15,8 @@ export function SuppliersTable({ initialSuppliers }: { initialSuppliers: Supplie
   const [suppliers, setSuppliers] = useState(initialSuppliers);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<{ id: number; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setSuppliers(initialSuppliers);
@@ -32,8 +35,8 @@ export function SuppliersTable({ initialSuppliers }: { initialSuppliers: Supplie
     return () => controller.abort();
   }, [search]);
 
-  async function handleDelete(id: number, name: string) {
-    if (!confirm(`Excluir o fornecedor "${name}"? Essa ação não pode ser desfeita.`)) return;
+  async function handleDelete(id: number) {
+    setDeleting(true);
     const res = await fetch(`/api/suppliers/${id}`, { method: "DELETE" });
     if (res.ok) {
       setSuppliers((prev) => prev.filter((s) => s.id !== id));
@@ -42,6 +45,8 @@ export function SuppliersTable({ initialSuppliers }: { initialSuppliers: Supplie
       const json = await res.json();
       alert(json.error ?? "Erro ao excluir fornecedor.");
     }
+    setDeleting(false);
+    setConfirmTarget(null);
   }
 
   return (
@@ -116,7 +121,7 @@ export function SuppliersTable({ initialSuppliers }: { initialSuppliers: Supplie
                       </Link>
                       <button
                         title="Excluir"
-                        onClick={() => handleDelete(s.id, s.name)}
+                        onClick={() => setConfirmTarget({ id: s.id, name: s.name })}
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
                       >
                         <Trash2 size={16} />
@@ -129,6 +134,17 @@ export function SuppliersTable({ initialSuppliers }: { initialSuppliers: Supplie
           </table>
         </div>
       </Card>
+
+      {confirmTarget && (
+        <ConfirmDialog
+          title="Excluir fornecedor"
+          message={`Excluir o fornecedor "${confirmTarget.name}"? Essa ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          loading={deleting}
+          onConfirm={() => handleDelete(confirmTarget.id)}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
     </div>
   );
 }

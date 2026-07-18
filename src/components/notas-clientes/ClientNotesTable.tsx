@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { ClientNote } from "@/domain/entities/ClientNote";
 
@@ -20,10 +21,11 @@ interface ClientNotesTableProps {
 export function ClientNotesTable({ notes: initialNotes, page = 1, totalPages = 1 }: ClientNotesTableProps) {
   const router = useRouter();
   const [notes, setNotes] = useState(initialNotes);
+  const [confirmTarget, setConfirmTarget] = useState<{ id: number; clientName: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  async function handleDelete(id: number, clientName: string) {
-    const message = 'Excluir a nota de "' + clientName + '"? Os itens ainda nao pagos voltam para o estoque. Essa acao nao pode ser desfeita.';
-    if (!confirm(message)) return;
+  async function handleDelete(id: number) {
+    setDeleting(true);
     const res = await fetch(`/api/client-notes/${id}`, { method: "DELETE" });
     if (res.ok) {
       setNotes((prev) => prev.filter((n) => n.id !== id));
@@ -32,6 +34,8 @@ export function ClientNotesTable({ notes: initialNotes, page = 1, totalPages = 1
       const json = await res.json();
       alert(json.error ?? "Erro ao excluir nota.");
     }
+    setDeleting(false);
+    setConfirmTarget(null);
   }
 
   return (
@@ -87,7 +91,7 @@ export function ClientNotesTable({ notes: initialNotes, page = 1, totalPages = 1
                         </Link>
                         <button
                           title="Excluir nota"
-                          onClick={() => handleDelete(n.id, n.clientName)}
+                          onClick={() => setConfirmTarget({ id: n.id, clientName: n.clientName })}
                           className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-danger-bg hover:text-danger transition-colors"
                         >
                           <Trash2 size={16} />
@@ -102,6 +106,17 @@ export function ClientNotesTable({ notes: initialNotes, page = 1, totalPages = 1
         </div>
         <Pagination page={page} totalPages={totalPages} basePath="/notas-clientes" />
       </Card>
+
+      {confirmTarget && (
+        <ConfirmDialog
+          title="Excluir nota"
+          message={`Excluir a nota de "${confirmTarget.clientName}"? Os itens ainda não pagos voltam para o estoque. Essa ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          loading={deleting}
+          onConfirm={() => handleDelete(confirmTarget.id)}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
     </div>
   );
 }
