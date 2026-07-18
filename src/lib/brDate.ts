@@ -22,3 +22,20 @@ export function mondayKeyOf(dayKey: string): string {
   d.setUTCDate(d.getUTCDate() + diff);
   return d.toISOString().slice(0, 10);
 }
+
+// Monta um ISO 8601 combinando uma data (YYYY-MM-DD) com a hora atual em
+// Brasília e o offset fixo -03:00 (Brasília não observa horário de verão
+// desde 2019). Usado ao criar/editar uma venda com uma data escolhida
+// manualmente, para que ela caia certinho naquele dia nos
+// relatórios/dashboard, mesmo que o navegador esteja em outro fuso.
+export function buildBrasiliaCreatedAt(dateStr: string): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: BR_TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  return `${dateStr}T${get("hour")}:${get("minute")}:${get("second")}-03:00`;
+}

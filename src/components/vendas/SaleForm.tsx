@@ -9,26 +9,9 @@ import { LineItemsEditor, LineItem, emptyLineItem } from "@/components/shared/Li
 import { Product } from "@/domain/entities/Product";
 import { Client } from "@/domain/entities/Client";
 import { NewSaleInput } from "@/domain/entities/Sale";
-import { saoPauloDateKey } from "@/lib/brDate";
+import { saoPauloDateKey, buildBrasiliaCreatedAt } from "@/lib/brDate";
 
 const PAYMENT_METHODS = ["Pix", "Dinheiro", "Cartão", "Boleto", "Transferência"];
-const BR_TZ = "America/Sao_Paulo";
-
-// Monta um ISO 8601 combinando a data escolhida (YYYY-MM-DD) com a hora atual
-// em Brasília, e o offset fixo -03:00 (Brasília não observa horário de
-// verão desde 2019). Assim a venda cai certinho no dia escolhido nos
-// relatórios/dashboard, mesmo que o navegador esteja em outro fuso.
-function buildCreatedAt(dateStr: string): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: BR_TZ,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(new Date());
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
-  return `${dateStr}T${get("hour")}:${get("minute")}:${get("second")}-03:00`;
-}
 
 export function SaleForm({ products, clients }: { products: Product[]; clients: Client[] }) {
   const router = useRouter();
@@ -60,7 +43,7 @@ export function SaleForm({ products, clients }: { products: Product[]; clients: 
       const input: NewSaleInput = {
         clientId: clientId ? Number(clientId) : undefined,
         paymentMethod,
-        createdAt: buildCreatedAt(saleDate),
+        createdAt: buildBrasiliaCreatedAt(saleDate),
         items: validItems.map((it) =>
           it.productId !== ""
             ? { productId: Number(it.productId), quantity: it.quantity, unitPrice: it.unitPrice }

@@ -119,6 +119,11 @@ export class SqliteSaleRepository implements SaleRepository {
     return (await this.findById(saleId))!;
   }
 
+  async updateCreatedAt(id: number, createdAt: string): Promise<void> {
+    await ensureDb();
+    await query("UPDATE sales SET created_at = $1::timestamptz WHERE id = $2", [createdAt, id]);
+  }
+
   async delete(id: number): Promise<void> {
     await ensureDb();
     // sale_items tem ON DELETE CASCADE em sale_id.

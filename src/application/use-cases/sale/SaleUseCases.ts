@@ -93,6 +93,18 @@ export class SaleUseCases {
     return sale;
   }
 
+  // Corrige a data de uma venda já registrada (ex: lançada no dia errado).
+  // Restrito a admin — checado na rota da API.
+  async updateDate(id: number, createdAt: string) {
+    if (!createdAt || Number.isNaN(Date.parse(createdAt))) {
+      throw new Error("Data inválida.");
+    }
+    const sale = await this.repo.findById(id);
+    if (!sale) throw new Error("Venda não encontrada.");
+    await this.repo.updateCreatedAt(id, createdAt);
+    return (await this.repo.findById(id))!;
+  }
+
   // Exclui a venda e devolve ao estoque os itens vinculados a produtos
   // cadastrados (itens avulsos não afetaram estoque, então não são
   // devolvidos). Restrito a admin — checado na rota da API.

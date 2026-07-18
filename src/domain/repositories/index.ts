@@ -52,6 +52,7 @@ export interface SaleRepository {
   findPage(page: number, pageSize: number): Promise<PagedResult<Sale>>;
   findById(id: number): Promise<Sale | null>;
   create(input: NewSaleInput, resolvedItems: Array<{ productId: number | null; productName: string; quantity: number; unitPrice: number; purchasePrice: number; subtotal: number }>, total: number, profit: number): Promise<Sale>;
+  updateCreatedAt(id: number, createdAt: string): Promise<void>;
   delete(id: number): Promise<void>;
 }
 

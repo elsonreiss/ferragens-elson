@@ -22,6 +22,21 @@ export async function GET(_req: NextRequest, { params }: Params) {
   return NextResponse.json({ data: sale });
 }
 
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Acesso restrito a administradores." }, { status: 403 });
+  const { id } = await params;
+  try {
+    const body = (await req.json()) as { createdAt?: string };
+    if (!body.createdAt) throw new Error("Informe a data da venda.");
+    const sale = await container.saleUseCases.updateDate(Number(id), body.createdAt);
+    return NextResponse.json({ data: sale });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Erro ao atualizar a data da venda.";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}
+
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Acesso restrito a administradores." }, { status: 403 });
